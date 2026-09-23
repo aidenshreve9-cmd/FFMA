@@ -1,4 +1,4 @@
-<title>Focus Friend Version 2.0</title>
+<title>Focus Friend Version 3.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap">
@@ -523,7 +523,7 @@ function dbTx(mode, fn) {
 }
 async function loadAssets() {
   db = await openDB();
-  if (!db) return;
+  if (!db) { validateSelections(); renderSettings(); return; }
   try {
     const all = await dbTx("readonly", st => st.getAll());
     (all || []).forEach(a => { if (a && a.blob && (a.type === "img" || a.type === "snd")) assets.push({ ...a, url: URL.createObjectURL(a.blob) }); });
@@ -566,6 +566,10 @@ function setScreen(id) {
   if (from === id) return;
   const a = $(from), b = $(id);
   visibleScreen = id; markDirty();
+  if (from === "home") setActive("home", false);
+  if (from === "session") setActive("session", false);
+  if (b.getAnimations) b.getAnimations().forEach(x => x.cancel()); // a quick back-and-forth never leaves it half-faded
+  b.style.pointerEvents = "";
   b.hidden = false;
   if (!motionOK()) { a.hidden = true; return; }
   let outK, inK;
@@ -679,7 +683,7 @@ const carousel = $("carousel");
 const slots = Array.from({ length: 5 }, () => carousel.appendChild(document.createElement("span")));
 // Axis rule lives here: only a mostly-horizontal slide changes the time. Vertical does nothing.
 function axisOf(dx, dy) { return Math.abs(dx) > Math.abs(dy) ? "x" : "y"; }
-function renderCarousel() {
+function renderCarousel(silent) {
   const base = Math.round(pos);
   slots.forEach((el, k) => {
     const i = base + k - 2, x = (i - pos) * ITEM_W, d = Math.min(1, Math.abs(x) / (ITEM_W * 1.7));
@@ -688,7 +692,7 @@ function renderCarousel() {
     el.style.opacity = (1 - d * .85).toFixed(3);
   });
   const idx = mod(base, DURATIONS.length);
-  if (idx !== durIndex) { durIndex = idx; renderDuration(true); }
+  if (idx !== durIndex) { durIndex = idx; renderDuration(!silent); }
 }
 function renderDuration(announce) {
   const m = DURATIONS[durIndex];
@@ -709,14 +713,14 @@ function snapTo(target) {
   };
   snapAnim = requestAnimationFrame(step);
 }
-function resetDuration() { cancelAnimationFrame(snapAnim); pos = DEFAULT_INDEX; durIndex = -1; renderCarousel(); }
+function resetDuration() { cancelAnimationFrame(snapAnim); pos = DEFAULT_INDEX; durIndex = -1; renderCarousel(true); }
 function hideHint() { $("hint").classList.add("gone"); }
 
 (function bindGesture() {
   const btn = $("focusBtn");
   let down = false, sx = 0, sy = 0, startPos = 0, axis = null, swallow = false, lx = 0, lt = 0, vel = 0;
   btn.addEventListener("pointerdown", e => {
-    down = true; axis = null; sx = lx = e.clientX; sy = e.clientY; lt = e.timeStamp; vel = 0;
+    down = true; axis = null; swallow = false; sx = lx = e.clientX; sy = e.clientY; lt = e.timeStamp; vel = 0;
     cancelAnimationFrame(snapAnim); startPos = pos;
     try { btn.setPointerCapture(e.pointerId); } catch (_) {}
     setActive("home", true);
@@ -738,7 +742,7 @@ function hideHint() { $("hint").classList.add("gone"); }
     if (axis === "x") {
       const projected = pos + vel * 160, base = Math.round(startPos);
       snapTo(Math.max(base - 3, Math.min(base + 3, Math.round(projected))));
-    }
+    } else snapTo(Math.round(pos));         // a tap mid-snap still lands on a whole value
   };
   btn.addEventListener("pointerup", release);
   btn.addEventListener("pointercancel", () => { release(); swallow = true; });
@@ -1048,11 +1052,12 @@ function streak(c, x, y, r, hex, a, rot, sx, sy) { c.save(); c.translate(x, y); 
 function vgrad(c, w, h, stops) { const g = c.createLinearGradient(0, 0, 0, h); stops.forEach((col, i) => g.addColorStop(i / (stops.length - 1), col)); c.fillStyle = g; c.fillRect(0, 0, w, h); }
 // Only reallocates the backing store when the element's size actually changes.
 function fit(cv, scale) {
-  const dpr = Math.min(2, window.devicePixelRatio || 1) * scale, r = cv.getBoundingClientRect();
-  const W = Math.max(1, Math.round(r.width * dpr)), H = Math.max(1, Math.round(r.height * dpr));
+  // clientWidth ignores transition transforms, so the backing store isn't resized every frame of a screen animation
+  const dpr = Math.min(2, window.devicePixelRatio || 1) * scale, cw = cv.clientWidth, ch = cv.clientHeight;
+  const W = Math.max(1, Math.round(cw * dpr)), H = Math.max(1, Math.round(ch * dpr));
   if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
   const c = cv.getContext("2d"); c.setTransform(dpr, 0, 0, dpr, 0, 0);
-  return { c, w: r.width, h: r.height };
+  return { c, w: cw, h: ch };
 }
 const RS = rng(77);
 const STARS = Array.from({ length: 260 }, () => ({ x: RS(), y: RS(), s: .5 + RS() * 1.3, b: .4 + RS() * .6, ph: RS() * 6.28, f: .3 + RS() * 1.1 }));
@@ -1201,7 +1206,7 @@ function createOrb(canvas) {
         const uRes = gl.getUniformLocation(prog, "uRes"), uTime = gl.getUniformLocation(prog, "uTime"), uAct = gl.getUniformLocation(prog, "uAct");
         return {
           draw(t, a) {
-            const dpr = Math.min(1.35, window.devicePixelRatio || 1), W = Math.max(2, Math.round(canvas.getBoundingClientRect().width * dpr));
+            const dpr = Math.min(1.35, window.devicePixelRatio || 1), W = Math.max(2, Math.round(canvas.clientWidth * dpr));
             if (canvas.width !== W) { canvas.width = W; canvas.height = W; }
             gl.viewport(0, 0, W, W);
             gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
@@ -1451,10 +1456,13 @@ function frame(now) {
   const animate = !reduceMotion.matches;
   // ease the touch state and nebula level so every change is smooth
   let settling = false;
-  ["home", "session"].forEach(k => { const s = act[k]; const d = s.target - s.v; if (Math.abs(d) > .002) { s.v += d * .08; settling = true; } else s.v = s.target; });
+  let actChanged = false;
+  ["home", "session"].forEach(k => { const s = act[k]; const d = s.target - s.v; if (Math.abs(d) > .002) { s.v += d * .08; settling = true; actChanged = true; } else if (s.v !== s.target) { s.v = s.target; actChanged = true; } });
   const nt = NEBULA_LEVEL[visibleScreen]; if (Math.abs(nt - nebLevel) > .002) { nebLevel += (nt - nebLevel) * .06; settling = true; } else nebLevel = nt;
-  $("focusBtn").style.setProperty("--act", act.home.v.toFixed(3));
-  $("timerBtn").style.setProperty("--act", act.session.v.toFixed(3));
+  if (actChanged) {
+    $("focusBtn").style.setProperty("--act", act.home.v.toFixed(3));
+    $("timerBtn").style.setProperty("--act", act.session.v.toFixed(3));
+  }
   if (!animate && !dirty && !settling) return;
   if (!dirty && now - lastFrame < 33) return;
   lastFrame = now; const wasDirty = dirty; dirty = false;
@@ -1635,16 +1643,17 @@ $("picFile").addEventListener("change", async e => {
 });
 
 /* ================= Misc ================= */
-let toastT = 0;
+let toastT = 0, toastOut = null;
 function toast(msg) {
   const t = $("toast"); t.textContent = msg;
+  if (toastOut) { toastOut.onfinish = null; toastOut.cancel(); toastOut = null; }
   const wasHidden = t.hidden; t.hidden = false;
   if (wasHidden && motionOK()) t.animate([{ opacity: 0, transform: "translate(-50%,12px)" }, { opacity: 1, transform: "translate(-50%,0)" }], { duration: 380, easing: EASE });
   clearTimeout(toastT);
   toastT = setTimeout(() => {
     if (!motionOK()) { t.hidden = true; return; }
-    t.animate([{ opacity: 1 }, { opacity: 0, transform: "translate(-50%,8px)" }], { duration: 320, easing: "ease-in", fill: "forwards" })
-      .onfinish = function () { t.hidden = true; this.cancel(); };
+    toastOut = t.animate([{ opacity: 1 }, { opacity: 0, transform: "translate(-50%,8px)" }], { duration: 320, easing: "ease-in", fill: "forwards" });
+    toastOut.onfinish = () => { t.hidden = true; toastOut.cancel(); toastOut = null; };
   }, 2800);
 }
 document.addEventListener("keydown", e => {

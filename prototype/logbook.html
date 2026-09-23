@@ -1,0 +1,268 @@
+<title>Focus Friend Logbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Single, deliberate dark theme that matches the app itself. */
+:root{
+  color-scheme: dark;
+  --ground:#05030a;
+  --panel:#0e0918;
+  --panel-2:#150d24;
+  --line:rgba(224,195,252,.14);
+  --text:#EFE6FA;
+  --muted:#ADA0C2;
+  --faint:#7C6E93;
+  --rose:#F72585;
+  --magenta:#D900FF;
+  --violet:#8A2BE2;
+  --halo:#E0C3FC;
+  --copper:#FF7A33;
+  --ok:#7fe0b4;
+  --warn:#FFB38A;
+  --serif:"Playfair Display", Georgia, "Times New Roman", serif;
+  --sans:"Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+html,body{background:var(--ground)}
+body{margin:0;color:var(--text);font-family:var(--sans);font-size:15.5px;line-height:1.6;
+  background:radial-gradient(1200px 600px at 80% -10%,rgba(138,43,226,.18),transparent 60%),radial-gradient(900px 500px at -10% 30%,rgba(247,37,133,.08),transparent 60%),var(--ground)}
+a{color:var(--halo);text-underline-offset:3px}
+a:hover{color:#fff}
+:focus-visible{outline:2px solid var(--halo);outline-offset:3px}
+.wrap{max-width:780px;margin:0 auto;padding-inline:20px;padding-block:40px 80px}
+
+header{display:grid;gap:14px;padding-bottom:28px;border-bottom:1px solid var(--line)}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0}
+h1{font-family:var(--serif);font-weight:400;font-size:clamp(34px,7vw,52px);line-height:1.05;margin:0;text-wrap:balance}
+h1 em{font-style:italic;color:var(--halo)}
+.lede{color:var(--muted);max-width:62ch;margin:0}
+.links{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
+.links a{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;text-decoration:none;font-weight:600;font-size:14px;
+  background:rgba(14,9,24,.8);box-shadow:inset 0 0 0 1px var(--line)}
+.links a:hover{box-shadow:inset 0 0 0 1px var(--rose),0 0 18px rgba(247,37,133,.25)}
+.links a span{font-family:var(--mono);font-weight:400;font-size:12px;color:var(--muted)}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border-radius:14px;overflow:hidden;margin:28px 0 8px}
+.stats div{background:var(--panel);padding:14px 16px}
+.stats b{display:block;font-family:var(--mono);font-weight:500;font-size:22px;color:#fff;font-variant-numeric:tabular-nums}
+.stats span{font-size:12.5px;color:var(--muted)}
+@media (max-width:560px){.stats{grid-template-columns:repeat(2,1fr)}}
+
+h2{font-family:var(--serif);font-weight:400;font-size:28px;margin:48px 0 6px}
+.sub{color:var(--muted);margin:0 0 22px}
+
+/* Timeline */
+.log{list-style:none;margin:0;padding:0;position:relative}
+.log::before{content:"";position:absolute;left:7px;top:8px;bottom:8px;width:1px;background:linear-gradient(var(--rose),var(--violet) 60%,rgba(138,43,226,.1))}
+.entry{position:relative;padding-left:34px;padding-bottom:30px}
+.entry::before{content:"";position:absolute;left:0;top:6px;width:15px;height:15px;border-radius:50%;background:var(--ground);box-shadow:inset 0 0 0 1.5px var(--violet)}
+.entry.release::before{background:radial-gradient(circle,#fff,#FFD2B0 40%,var(--copper));box-shadow:0 0 12px var(--copper)}
+.meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:6px}
+time{font-family:var(--mono);font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tag{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:999px;background:rgba(138,43,226,.16);color:var(--halo)}
+.tag.rel{background:rgba(255,122,51,.14);color:var(--copper)}
+.tag.fix{background:rgba(127,224,180,.12);color:var(--ok)}
+.commit{font-family:var(--mono);font-size:12px;color:var(--faint)}
+.entry h3{font-size:18px;font-weight:600;margin:0 0 4px;text-wrap:balance}
+.ask{margin:0 0 10px;color:var(--muted);font-size:14.5px}
+.ask q{font-style:italic;color:var(--text)}
+.card{background:linear-gradient(180deg,var(--panel-2),var(--panel));border-radius:14px;box-shadow:inset 0 0 0 1px var(--line);padding:14px 18px}
+.card ul{margin:0;padding-left:18px;display:grid;gap:5px}
+.card li::marker{color:var(--rose)}
+.card li b{font-weight:600;color:#fff}
+.card p{margin:0 0 8px}
+.card + .card{margin-top:10px}
+.card h4{font-family:var(--mono);font-weight:500;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+
+/* Ledgers */
+.ledger{display:grid;gap:10px}
+.row{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;background:var(--panel);border-radius:12px;padding:12px 16px;box-shadow:inset 0 0 0 1px var(--line)}
+.row .state{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;border-radius:999px;white-space:nowrap;margin-top:2px}
+.state.ok{background:rgba(127,224,180,.12);color:var(--ok)}
+.state.open{background:rgba(255,179,138,.12);color:var(--warn)}
+.state.blocked{background:rgba(247,37,133,.14);color:#ff8cc0}
+.row b{font-weight:600}
+.row p{margin:2px 0 0;color:var(--muted);font-size:14px}
+
+footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:var(--faint);font-size:13px}
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Wednesday 23 September 2026 · one working session</p>
+    <h1>Focus Friend <em>Logbook</em></h1>
+    <p class="lede">Every change made to the Focus Friend prototype today, in order: what you asked for, what was built, what was fixed, and what is still open. Times are UTC.</p>
+    <nav class="links" aria-label="Project links">
+      <a href="https://claude.ai/artifact/EUiroHykyDk7Tqn7ZXFYwq">Open the app <span>Version 3.0</span></a>
+      <a href="https://github.com/aidenshreve9-cmd/FFMA/pull/1">Pull request <span>#1</span></a>
+    </nav>
+  </header>
+
+  <div class="stats" role="list">
+    <div role="listitem"><b>3.0</b><span>current version</span></div>
+    <div role="listitem"><b>5</b><span>commits in the pull request</span></div>
+    <div role="listitem"><b>5</b><span>published versions</span></div>
+    <div role="listitem"><b>9</b><span>bugs fixed in 3.0</span></div>
+  </div>
+
+  <h2>Timeline</h2>
+  <p class="sub">Orange markers are releases you can open. Hollow markers are notes along the way.</p>
+
+  <ol class="log">
+    <li class="entry">
+      <div class="meta"><time datetime="2026-09-23T12:47Z">12:47</time><span class="tag">Kickoff</span></div>
+      <h3>Specs received</h3>
+      <p class="ask">You shared the Kickoff Kit and Master Spec v2 and asked: <q>Create mobile app artifact. Make it a functional app.</q></p>
+      <div class="card"><ul>
+        <li>The repository was empty apart from a README. Branch: <code>claude/mobile-app-artifact-ouptuu</code>.</li>
+        <li>Built as a single-file web app, following the spec's APPROVED items and saying plainly where a browser can't do what Android will.</li>
+      </ul></div>
+    </li>
+
+    <li class="entry release">
+      <div class="meta"><time datetime="2026-09-23T12:53Z">12:53</time><span class="tag rel">Version 1.0</span><span class="commit">c5a3edc</span></div>
+      <h3>First working prototype</h3>
+      <div class="card">
+        <h4>Built</h4>
+        <ul>
+          <li><b>Focus button:</b> opens on 15 min every time. Horizontal swipe picks 15 / 30 / 45 / 60, stopping at both ends. Vertical swipes do nothing, and tapping starts the session.</li>
+          <li><b>Timer:</b> uses a fixed end time, so it stays right after backgrounding. Minutes only, rounded up. Keeps the screen awake where the browser allows it.</li>
+          <li><b>Ending:</b> "End focus early?" confirmation. The Done screen shows a random approved quote, with the three-note chime only on natural completion.</li>
+          <li><b>Sound:</b> White Noise, Brown Noise, Random and your own sounds. No volume slider.</li>
+          <li><b>Scenic views:</b> six drawn scenes plus Random and your own pictures.</li>
+          <li><b>Settings:</b> Trusted Contacts list, Alarm Safety switch with the approved wording, permissions status, and a placeholder donation sheet.</li>
+          <li><b>Honest silencing:</b> the "Notifications silenced" line never shows in the browser. It says "Browser preview · notifications not silenced" instead.</li>
+          <li>Pictures, sounds and settings are stored on the device only.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>Fixed before publishing</h4>
+        <ul><li>Every screen was showing at once, because layout rules overrode the "hidden" attribute. Fixed with an explicit rule.</li></ul>
+      </div>
+    </li>
+
+    <li class="entry">
+      <div class="meta"><time datetime="2026-09-23T12:54Z">12:54</time><span class="tag">Pull request</span></div>
+      <h3>Pull request #1 opened</h3>
+      <div class="card"><ul>
+        <li>Opened from the Claude Code UI. Watched with hourly check-ins: no merge conflicts, no review comments, and no CI configured in the repository.</li>
+      </ul></div>
+    </li>
+
+    <li class="entry release">
+      <div class="meta"><time datetime="2026-09-23T13:28Z">13:28</time><span class="tag rel">Version 1.1</span><span class="commit">829c6ae</span></div>
+      <h3>"Quantum Nebula Void" restyle</h3>
+      <p class="ask">You shared a reference image and the <q>Warm Obsidian Event Horizon</q> design spec. You asked for the style only, not the image's text.</p>
+      <div class="card">
+        <ul>
+          <li><b>Background:</b> obsidian-to-indigo nebula with slow plasma wisps, geometric orbit rings with small planets, and drifting dust specks.</li>
+          <li><b>Orbital dial:</b> fine tick marks, a 60-minute arc with 15/30/45/60 marks, a breathing magenta ring and a liquid plasma core.</li>
+          <li><b>Glass and prism:</b> dark glass panels with 1px rose-to-violet glowing edges and deep shadows.</li>
+          <li><b>Switches:</b> dark tracks with ember-glow knobs.</li>
+          <li><b>Fonts:</b> Playfair Display, Plus Jakarta Sans and JetBrains Mono.</li>
+          <li>Behavior unchanged. All motion respects the phone's reduced-motion setting.</li>
+          <li><b>After a visual check:</b> brighter plasma core, and the session status line now fits on one line.</li>
+        </ul>
+      </div>
+    </li>
+
+    <li class="entry">
+      <div class="meta"><time datetime="2026-09-23T13:32Z">13:32</time><span class="tag">Rename</span></div>
+      <h3>Titled "Focus Friend Version 2.0"</h3>
+      <div class="card"><ul>
+        <li>The page title was changed from another session. The next publish read that version in full and kept the new title.</li>
+      </ul></div>
+    </li>
+
+    <li class="entry release">
+      <div class="meta"><time datetime="2026-09-23T14:07Z">14:07</time><span class="tag rel">Version 2.0</span><span class="commit">a9c54ab · 8363ed0</span></div>
+      <h3>3D orb, looping time picker, transitions, new content</h3>
+      <p class="ask">You asked for smooth transitions everywhere, a 3D Quantum Focus Button, a looping time picker, working Trusted Contacts, new Alarm Safety wording, automatic permission rules, 8 scenic views, 8 noise colors, and removal of the Home title and Settings footer.</p>
+      <div class="card">
+        <ul>
+          <li><b>Transitions:</b> screens cross-fade with zoom and blur, and Settings slides in from the side. Sheets rise in and sink out. Messages, list items, radio selections and switches all animate.</li>
+          <li><b>3D orb (WebGL):</b> a glowing inner core, swirling filaments rotating in 3D, and a glass-like outer shell that ripples and bends light. It has bloom, sliding white glints and a 9-second breathing rhythm, with a 2D fallback when WebGL isn't available.</li>
+          <li><b>Touch and hover:</b> the core grows and brightens, and slow warm-magenta ripples spread outward.</li>
+          <li><b>Time picker:</b> a finger-tracking strip that loops 15 → 30 → 45 → 60 → 15 and snaps smoothly. Vertical slides still do nothing.</li>
+          <li><b>Trusted Contacts:</b> on/off switch (starts OFF), "Choose from contacts" where the browser supports it, and the exact rules the phone will enforce.</li>
+          <li><b>Alarm Safety:</b> now reads "Alarms may be used for medication, emergencies, or other safety or health-related purposes."</li>
+          <li><b>Permission sheet:</b> lists what's blocked (all notifications, other calls), what always gets through (emergency alerts, and repeat callers on the second call within 15 minutes), and whether Trusted Contacts and Alarm Safety are on.</li>
+          <li><b>8 scenic views:</b> Quantum Nebula (default), Spiral Galaxy, Event Horizon, Aurora Veil, Cosmic Dust, Stellar Nursery, Dark Matter Web, Ethereal Void.</li>
+          <li><b>8 sounds:</b> White, Pink, Brown, Green, Grey, Blue, Violet and Black noise, generated live and balanced to similar loudness.</li>
+          <li><b>Removed:</b> the Home title and the "No account · No tracking" footer.</li>
+          <li><b>After a visual check:</b> Home background taken close to pitch black, and the orb's glints softened.</li>
+        </ul>
+      </div>
+    </li>
+
+    <li class="entry release">
+      <div class="meta"><time datetime="2026-09-23T14:17Z">14:17</time><span class="tag rel">Version 3.0</span><span class="tag fix">Debug pass</span></div>
+      <h3>Nine bug fixes, no behavior changes</h3>
+      <p class="ask">You asked to fix anything that doesn't change what's done, and to debug.</p>
+      <div class="card">
+        <ul>
+          <li><b>A tap could be ignored:</b> after a slide that ended off the button, the next real tap on Focus was swallowed.</li>
+          <li><b>The time picker could get stuck</b> between two numbers if you tapped while it was still snapping.</li>
+          <li><b>A message could be invisible</b> if it appeared while the previous one was fading out.</li>
+          <li><b>Hover effects kept running on hidden screens:</b> the orb's ripples continued after leaving Home or the session.</li>
+          <li><b>Quick back-and-forth between screens</b> could leave a screen half-faded or untappable.</li>
+          <li><b>Canvases were resized every frame</b> during screen transitions. They now ignore the animation's zoom.</li>
+          <li><b>Screen readers announced "15 minutes"</b> as soon as the page loaded.</li>
+          <li><b>Old saved choices weren't cleaned up</b> when browser storage was unavailable. For example, a stale "Dusk Ridge" scene stayed selected.</li>
+          <li><b>Wasted work each frame:</b> the orb's touch glow was written to the page 60 times a second even when nothing changed.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>Checked</h4>
+        <ul>
+          <li>Automated browser run: the picker loops both ways and ignores vertical slides. Tap-after-stray-slide works. Start → end early → Done → Home works. Rapid Settings open/close works. Back-to-back messages both show. Contacts save. 8 sounds and 8 scenes are present. No script errors.</li>
+          <li>The orb shader compiles and renders under WebGL.</li>
+        </ul>
+      </div>
+    </li>
+  </ol>
+
+  <h2>Decisions you made</h2>
+  <p class="sub">These override the original Master Spec where they differ.</p>
+  <div class="ledger">
+    <div class="row"><span class="state ok">Approved</span><div><b>Quantum Nebula Void theme</b><p>Replaces the spec's dark-and-mint look.</p></div></div>
+    <div class="row"><span class="state ok">Approved</span><div><b>Time picker loops 60 → 15</b><p>Replaces the spec's "no wrap-around" rule.</p></div></div>
+    <div class="row"><span class="state ok">Approved</span><div><b>New Alarm Safety wording</b><p>Medication, emergencies, or other safety or health-related purposes.</p></div></div>
+    <div class="row"><span class="state ok">Approved</span><div><b>Trusted Contacts and Alarm Safety only apply when switched on</b><p>Repeat callers ring on the second call. Emergency alerts always get through.</p></div></div>
+    <div class="row"><span class="state ok">Approved</span><div><b>8 cosmic scenic views and 8 noise colors</b><p>Settles the spec's open question about which scenic views to include.</p></div></div>
+    <div class="row"><span class="state ok">Approved</span><div><b>Removed the Home title and the Settings footer</b></div></div>
+  </div>
+
+  <h2>Choices waiting for your OK</h2>
+  <p class="sub">I picked these so the app would work. Any of them can change.</p>
+  <div class="ledger">
+    <div class="row"><span class="state open">Open</span><div><b>Slide direction</b><p>Sliding left goes to the next time and sliding right goes back, like flipping through a list.</p></div></div>
+    <div class="row"><span class="state open">Open</span><div><b>Default switch states</b><p>Alarm Safety starts ON so medication alarms aren't missed. Trusted Contacts starts OFF.</p></div></div>
+    <div class="row"><span class="state open">Open</span><div><b>Black Noise</b><p>Strictly, "black noise" means silence. It's built as a very quiet sub-bass rumble instead.</p></div></div>
+    <div class="row"><span class="state open">Open</span><div><b>Default scenic view</b><p>Quantum Nebula.</p></div></div>
+    <div class="row"><span class="state open">Open</span><div><b>Home helpers</b><p>The step dots were replaced by the dial arc. The "Slide the button to change the time" hint is still shown.</p></div></div>
+    <div class="row"><span class="state open">Open</span><div><b>Done screen extras</b><p>The quote's author is shown, and ending early says "Session ended".</p></div></div>
+    <div class="row"><span class="state open">Open</span><div><b>Buy Me a Coffee link</b><p>Not provided yet. The button opens a sheet saying so.</p></div></div>
+    <div class="row"><span class="state open">Open</span><div><b>Quote wording</b><p>Each quote still needs checking against a public-domain translation before release.</p></div></div>
+  </div>
+
+  <h2>Platform limits</h2>
+  <p class="sub">What the browser version can't do, and what the Android app will do instead. Nothing here is faked in the app.</p>
+  <div class="ledger">
+    <div class="row"><span class="state blocked">Browser</span><div><b>Silencing notifications and calls</b><p>Web pages can't control Do Not Disturb. The Android app will, with Do Not Disturb access, and restore your settings afterward.</p></div></div>
+    <div class="row"><span class="state blocked">Browser</span><div><b>Trusted Contacts bypass</b><p>Android's Do Not Disturb allows calls only from "starred" or "all" contacts, not a custom list. The realistic plan is to star your Trusted Contacts during a session and un-star them afterward, which needs permission to edit contacts.</p></div></div>
+    <div class="row"><span class="state ok">Android</span><div><b>Repeat callers, alarms, emergency alerts</b><p>Built-in Do Not Disturb settings. The second call from the same person within 15 minutes rings.</p></div></div>
+    <div class="row"><span class="state blocked">Unbuilt</span><div><b>Purple Alarm Safety effect</b><p>Needs a reliable way to tell when an alarm is ringing. That still needs researching on Android.</p></div></div>
+    <div class="row"><span class="state open">Check</span><div><b>Sound with the screen locked, and battery use</b><p>Depends on the phone's browser. The animated background and 3D orb should be tested on your phone.</p></div></div>
+  </div>
+
+  <h2>Next time</h2>
+  <div class="card"><ul>
+    <li>Try Version 3.0 on your phone: slide feel, orb touch, all 8 sounds, and all 8 scenic views.</li>
+    <li>Answer the open choices above.</li>
+    <li>Start the native Android app (Kickoff Kit Phase 1: the project skeleton), using this prototype as the visual reference.</li>
+  </ul></div>
+
+  <footer>Branch <code>claude/mobile-app-artifact-ouptuu</code> · file <code>prototype/focus-friend.html</code> · this logbook is <code>prototype/logbook.html</code></footer>
+</div>
