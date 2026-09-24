@@ -130,6 +130,11 @@ blockquote cite{font-style:normal;color:var(--muted);font-size:13px;letter-spaci
 
 /* ---------- Settings ---------- */
 #settings{padding-inline:0;padding-block:0}
+.set-bg{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.set-bg canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#setSceneOld{opacity:0}
+.set-dim{position:absolute;inset:0;background:linear-gradient(rgba(3,0,12,.62),rgba(3,0,12,.5) 40%,rgba(3,0,12,.7))}
+.set-head,.set-body{position:relative;z-index:1}
 .set-head{display:flex;align-items:center;gap:12px;padding:14px 20px 12px}
 .set-head h1{font-family:var(--serif);font-size:26px;margin:0;font-weight:400}
 .set-body{flex:1;overflow-y:auto;padding:4px 20px 30px;display:flex;flex-direction:column;gap:24px}
@@ -221,7 +226,19 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
 .sheet .left{font-family:var(--mono);color:var(--halo);letter-spacing:.04em}
 .callout{border-radius:14px;background:rgba(255,84,0,.08);box-shadow:inset 0 0 0 1px rgba(255,84,0,.3);color:var(--warn);padding:10px 12px;font-size:13.5px}
 
-.toast{position:absolute;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);padding:11px 18px;border-radius:999px;font-size:14px;z-index:20;max-width:calc(100% - 40px);text-align:center}
+.toast{pointer-events:none;position:absolute;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);padding:11px 18px;border-radius:999px;font-size:14px;z-index:20;max-width:calc(100% - 40px);text-align:center}
+/* ---------- Local search (Settings only) ---------- */
+.search{position:relative;margin:0 0 12px}
+.search svg{position:absolute;left:12px;top:50%;width:16px;height:16px;margin-top:-8px;stroke:var(--faint);fill:none;stroke-width:1.8;stroke-linecap:round;pointer-events:none}
+.search input{width:100%;box-sizing:border-box;min-height:44px;border-radius:12px;border:1px solid var(--glass-line);background:rgba(0,0,0,.45);color:var(--text);padding:0 12px 0 36px;font:inherit;font-size:14.5px;transition:border-color .3s,box-shadow .3s}
+.search input:focus{outline:none;border-color:var(--rose);box-shadow:0 0 14px rgba(247,37,133,.3)}
+.search input::placeholder{color:var(--faint)}
+.search input::-webkit-search-cancel-button{filter:invert(.7)}
+.search-empty{padding:14px 16px;color:var(--muted);font-size:13.5px}
+.search-empty b{display:block;color:var(--text);font-weight:600;margin-bottom:2px}
+.search-empty p{margin:0}
+.dym{background:none;border:0;padding:0;color:var(--halo);font:inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer;min-height:24px}
+.contact[tabindex]:focus-visible{outline:2px solid var(--halo);outline-offset:2px;border-radius:10px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 @media (prefers-reduced-motion: reduce){
@@ -294,6 +311,7 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
 
   <!-- SETTINGS -->
   <section id="settings" class="screen" aria-label="Settings" hidden>
+    <div class="set-bg" aria-hidden="true"><canvas id="setScene"></canvas><canvas id="setSceneOld"></canvas><div class="set-dim"></div></div>
     <div class="set-head">
       <button class="icon-btn" id="closeSettings" aria-label="Back to Focus">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
@@ -304,15 +322,19 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
 
       <div class="set-sec">
         <h2>Sound</h2>
+        <div class="search" id="soundSearch" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><input type="search" id="soundQuery" placeholder="Search sounds…" aria-label="Search sounds" aria-controls="soundList" autocomplete="off" spellcheck="false"></div>
         <div class="choices glass prism" id="soundList" role="radiogroup" aria-label="Sound"></div>
+        <div class="search-empty" id="soundEmpty" hidden></div>
         <button class="add" id="addSound">＋ Add your own sound</button>
         <input type="file" id="soundFile" accept="audio/*" hidden>
         <p class="note">Use your phone's volume buttons to change how loud it is.</p>
       </div>
 
       <div class="set-sec">
-        <h2>Scenic view</h2>
-        <div class="scenes" id="sceneList" role="radiogroup" aria-label="Scenic view"></div>
+        <h2>Atmosphere</h2>
+        <div class="search" id="sceneSearch" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><input type="search" id="sceneQuery" placeholder="Search atmospheres…" aria-label="Search atmospheres" aria-controls="sceneList" autocomplete="off" spellcheck="false"></div>
+        <div class="scenes" id="sceneList" role="radiogroup" aria-label="Atmosphere"></div>
+        <div class="search-empty" id="sceneEmpty" hidden></div>
         <button class="add" id="addPic">＋ Add your own picture</button>
         <input type="file" id="picFile" accept="image/*" hidden>
       </div>
@@ -323,12 +345,14 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
           <div class="card glass prism toggle-row">
             <div class="txt">
               <b>Trusted Contacts — <span id="trustState">OFF</span></b>
-              <p>When on, calls and messages from these people get through Focus.</p>
+              <p>When on, these people can call and message you during Focus in the Android app. The browser preview can't let calls or messages through.</p>
             </div>
             <button class="switch" id="trustSwitch" role="switch" aria-checked="false" aria-label="Trusted Contacts"><span class="st">Trusted Contacts</span></button>
           </div>
           <div class="card glass prism" id="contactCard">
-            <div id="contactList"></div>
+            <div class="search" id="contactSearch" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><input type="search" id="contactQuery" placeholder="Search contacts…" aria-label="Search trusted contacts" aria-controls="contactList" autocomplete="off" spellcheck="false"></div>
+            <div id="contactList" role="list" aria-label="Trusted Contacts"></div>
+            <div class="search-empty" id="contactEmpty" hidden></div>
             <form class="addc" id="contactForm" autocomplete="off">
               <input type="text" id="cName" placeholder="Name" aria-label="Contact name" maxlength="40">
               <input type="tel" id="cNum" placeholder="Phone number" aria-label="Phone number" maxlength="24">
@@ -349,6 +373,7 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
           </div>
           <button class="switch" id="alarmSwitch" role="switch" aria-checked="true" aria-label="Alarm Safety"><span class="st">Alarm Safety</span></button>
         </div>
+        <p class="note">The browser preview can't change how your phone handles alarms, so real alarm pass-through isn't available here. It works in the Android app.</p>
       </div>
 
       <div class="set-sec">
@@ -376,7 +401,7 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
       <ul><li><b>Emergency alerts.</b></li><li><b>Repeat callers:</b> the first call is silenced. If the same person calls again within 15 minutes, that second call rings.</li></ul>
       <h3>Only when turned on in Settings</h3>
       <ul id="permOptional"></ul>
-      <div class="callout">You're using the browser preview. It can't change your phone's settings, so nothing is blocked here.</div>
+      <div class="callout">You're using the browser preview. A browser can't silence notifications or calls, so nothing is blocked here.</div>
       <div class="actions">
         <button class="btn primary wide" id="permAllow">Continue in preview</button>
         <button class="btn quiet wide" id="permDeny">Not now</button>
@@ -386,11 +411,11 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
 
   <div class="scrim" id="barrier" hidden>
     <div class="sheet glass prism" role="dialog" aria-modal="true" aria-labelledby="barTitle">
-      <h2 id="barTitle">Focus can't start yet</h2>
-      <p>Focus Friend needs this access to reduce distractions. Without it, a session can't start.</p>
+      <h2 id="barTitle">Focus can't start without access.</h2>
+      <p>Focus Friend needs Do Not Disturb access to reduce distractions.</p>
       <div class="actions">
-        <button class="btn primary wide" id="barReview">Review access</button>
-        <button class="btn quiet wide" id="barBack">Back</button>
+        <button class="btn primary wide" id="barReview">Review the rules again</button>
+        <button class="btn quiet wide" id="barBack">Go back</button>
       </div>
     </div>
   </div>
@@ -419,8 +444,369 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
   </div>
 
   <div class="toast glass" id="toast" role="status" hidden></div>
+  <p class="sr" id="liveMsg" aria-live="polite"></p>
 </div>
 
+<script>
+/*
+ * Focus Friend - local search.
+ *
+ * Private, deterministic, in-memory search for small on-device collections
+ * (built-in sounds and scenic views, user sounds and pictures, Trusted Contacts).
+ * No network, no history, no telemetry, no logging: queries never leave this module
+ * and are never stored.
+ *
+ *   UI -> SearchController -> SearchNormalizer -> SearchIndex -> SearchRanker -> results
+ *
+ * Works as a browser <script> (window.FFSearch) and as a Node module (tests).
+ */
+(function (root, factory) {
+  if (typeof module === "object" && module.exports) module.exports = factory();
+  else root.FFSearch = factory();
+})(typeof self !== "undefined" ? self : this, function () {
+  "use strict";
+
+  /* ======================= Scores ======================= */
+  // The spec's ranking order is authoritative:
+  //   exact > exact token > prefix > token prefix > substring > phone (partial digits) > fuzzy.
+  // Two spec example values were adjusted so the numbers can't contradict that order
+  // (see docs/DECISIONS.md, C1/C2): a full phone-number match counts as an exact-token
+  // match of the phone field (80), and fuzzy is capped below partial phone matches.
+  const SCORE = Object.freeze({
+    exact: 100,
+    exactToken: 80,
+    phoneFull: 80,
+    prefix: 60,
+    tokenPrefix: 50,
+    substring: 30,
+    phonePartial: 25,
+    fuzzyMax: 24,
+    fuzzyMin: 10,
+  });
+
+  const DEFAULTS = Object.freeze({ limit: 10, ranking: "B", fuzzy: true });
+
+  /* ======================= SearchNormalizer ======================= */
+  // Raw -> Unicode NFKC -> lowercase -> trim -> collapse whitespace -> safe punctuation -> normalized.
+  const PUNCT = /[\u2010-\u2015\u2212\-_./\\,;:!?()[\]{}"\u201c\u201d\u00ab\u00bb`~|+*&^%$#@=<>]+/g;
+  const APOS = /['\u2019\u02bc]/g;
+  const WS = /\s+/g;
+
+  function base(s) {
+    if (typeof s !== "string") return "";
+    try { s = s.normalize("NFKC"); } catch (e) { /* very old engines: keep as is */ }
+    return s.toLowerCase();
+  }
+  function collapse(s) { return s.replace(WS, " ").trim(); }
+
+  // Titles (built-in names, scenic views): punctuation becomes a space.
+  function normalizeTitle(s) { return collapse(base(s).replace(APOS, "").replace(PUNCT, " ")); }
+  // Personal names: conservative. Apostrophes join ("O'Brien" -> "obrien"), hyphens split,
+  // letters and accents are kept as written.
+  function normalizeName(s) { return collapse(base(s).replace(APOS, "").replace(PUNCT, " ")); }
+  // Filenames: drop a trailing extension, then treat _ - . as spaces.
+  function normalizeFilename(s) {
+    const b = base(s).replace(/\.[a-z0-9]{1,5}$/i, "");
+    return collapse(b.replace(APOS, "").replace(PUNCT, " "));
+  }
+  function tokenize(normalized) { return normalized ? normalized.split(" ").filter(Boolean) : []; }
+
+  /* ---------- Phone numbers ---------- */
+  // Internal form is digits only. Display always keeps the person's original text.
+  function normalizePhone(s) { return typeof s === "string" ? s.replace(/\D+/g, "") : ""; }
+  const PHONE_LIKE = /^[\d\s+().\-\u2010-\u2015]+$/;
+  function isPhoneLike(raw) {
+    return typeof raw === "string" && PHONE_LIKE.test(raw.trim()) && normalizePhone(raw).length >= 3;
+  }
+  // Same number, allowing a country code (1-3 digits) on either side:
+  // "+1 780 555 1234", "1-780-555-1234", "17805551234" and "7805551234" all match.
+  function phonesMatch(a, b) {
+    if (!a || !b) return false;
+    if (a === b) return true;
+    const [lo, hi] = a.length < b.length ? [a, b] : [b, a];
+    return lo.length >= 7 && hi.length - lo.length <= 3 && hi.endsWith(lo);
+  }
+
+  const NORMALIZERS = { title: normalizeTitle, name: normalizeName, filename: normalizeFilename };
+
+  /* ======================= Fuzzy (bounded OSA distance) ======================= */
+  // Optimal-string-alignment distance (Levenshtein + adjacent transposition) with an
+  // upper bound; returns bound+1 as soon as the bound can't be met. Reuses buffers,
+  // so a keystroke allocates nothing here.
+  let rowA = new Int32Array(64), rowB = new Int32Array(64), rowC = new Int32Array(64);
+  function boundedDistance(a, b, bound) {
+    const n = a.length, m = b.length;
+    if (Math.abs(n - m) > bound) return bound + 1;
+    if (n === 0 || m === 0) return Math.max(n, m);
+    if (m + 1 > rowA.length) { const k = m + 1; rowA = new Int32Array(k); rowB = new Int32Array(k); rowC = new Int32Array(k); }
+    let prev2 = rowA, prev = rowB, cur = rowC;
+    for (let j = 0; j <= m; j++) prev[j] = j;
+    for (let i = 1; i <= n; i++) {
+      cur[0] = i;
+      let rowMin = cur[0];
+      const ai = a.charCodeAt(i - 1);
+      for (let j = 1; j <= m; j++) {
+        const bj = b.charCodeAt(j - 1);
+        let v = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ai === bj ? 0 : 1));
+        if (i > 1 && j > 1 && ai === b.charCodeAt(j - 2) && a.charCodeAt(i - 2) === bj) v = Math.min(v, prev2[j - 2] + 1);
+        cur[j] = v;
+        if (v < rowMin) rowMin = v;
+      }
+      if (rowMin > bound) return bound + 1;
+      const t = prev2; prev2 = prev; prev = cur; cur = t;
+    }
+    return prev[m];
+  }
+  // Allowed edits by token length. 1-4 characters: none in results (exact/prefix only;
+  // did-you-mean may still offer a strong guess). Longer tokens: small, bounded edits.
+  function fuzzyBound(len) { return len <= 4 ? 0 : len <= 8 ? 1 : 2; }
+  function suggestBound(len) { return len <= 2 ? 0 : len <= 6 ? 1 : 2; }
+
+  /* ======================= Records ======================= */
+  // Generic searchable record:
+  // { id, type, title, subtitle, searchableFields, normalizedFields, tokens, createdAt }
+  // `fieldKinds` maps each searchable field to how it is normalized: title | name | filename | phone.
+  function createRecord(input, fieldKinds) {
+    if (!input || input.id == null) throw new TypeError("record needs an id");
+    const searchableFields = Object.assign({}, input.searchableFields || { title: input.title });
+    const kinds = fieldKinds || {};
+    const normalizedFields = {};
+    const tokens = [];
+    const prepared = [];
+    Object.keys(searchableFields).forEach(key => {
+      const raw = searchableFields[key];
+      if (typeof raw !== "string" || !raw) return;
+      const kind = kinds[key] || (key === "phone" ? "phone" : key === "name" ? "name" : "title");
+      if (kind === "phone") {
+        const digits = normalizePhone(raw);
+        normalizedFields[key] = digits;
+        if (digits) prepared.push({ key, kind, norm: "", toks: [], digits });
+        return;
+      }
+      const norm = (NORMALIZERS[kind] || normalizeTitle)(raw);
+      const toks = tokenize(norm);
+      normalizedFields[key] = norm;
+      toks.forEach(t => tokens.push(t));
+      prepared.push({ key, kind, norm, toks, digits: "" });
+    });
+    const record = {
+      id: String(input.id),
+      type: input.type || "item",
+      title: String(input.title == null ? "" : input.title),
+      subtitle: input.subtitle == null ? "" : String(input.subtitle),
+      searchableFields,
+      normalizedFields,
+      tokens,
+      createdAt: typeof input.createdAt === "number" ? input.createdAt : 0,
+      payload: input.payload,
+    };
+    Object.defineProperty(record, "_fields", { value: prepared, enumerable: false });
+    return record;
+  }
+
+  /* ======================= Query preparation ======================= */
+  function prepareQuery(raw) {
+    if (typeof raw !== "string") return null;
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    const norm = normalizeTitle(trimmed);
+    const toks = tokenize(norm);
+    const phoneLike = isPhoneLike(trimmed);
+    if (!toks.length && !phoneLike) return null;
+    return { raw: trimmed, norm, toks, digits: phoneLike ? normalizePhone(trimmed) : "", phoneLike };
+  }
+
+  /* ======================= SearchRanker ======================= */
+  const MATCH_RANK = { exact: 7, exactToken: 6, phoneFull: 6, prefix: 5, tokenPrefix: 4, substring: 3, phonePartial: 2, fuzzy: 1 };
+
+  function hasToken(list, t) { for (let i = 0; i < list.length; i++) if (list[i] === t) return true; return false; }
+  function hasTokenPrefix(list, t) { for (let i = 0; i < list.length; i++) if (list[i].startsWith(t)) return true; return false; }
+
+  function scoreField(f, q, opts) {
+    if (f.kind === "phone") {
+      if (!q.phoneLike || !q.digits) return null;
+      if (phonesMatch(q.digits, f.digits)) return { score: SCORE.phoneFull, matchType: "phoneFull" };
+      if (q.digits.length >= 3 && f.digits.indexOf(q.digits) !== -1) return { score: SCORE.phonePartial, matchType: "phonePartial" };
+      return null;
+    }
+    const text = f.norm, toks = f.toks;
+    if (!text) return null;
+    if (text === q.norm) return { score: SCORE.exact, matchType: "exact" };
+    const B = opts.ranking !== "A";
+    if (B && q.toks.every(t => hasToken(toks, t))) return { score: SCORE.exactToken, matchType: "exactToken" };
+    if (text.startsWith(q.norm)) return { score: SCORE.prefix, matchType: "prefix" };
+    if (B && q.toks.every(t => hasTokenPrefix(toks, t))) return { score: SCORE.tokenPrefix, matchType: "tokenPrefix" };
+    if (q.norm.length >= 2 && text.indexOf(q.norm) !== -1) return { score: SCORE.substring, matchType: "substring" };
+
+    // Fuzzy: every query token must land on some field token (by prefix or a small edit).
+    if (opts.fuzzy) {
+      let total = 0, edited = false, ok = true;
+      for (let i = 0; i < q.toks.length && ok; i++) {
+        const t = q.toks[i];
+        if (hasTokenPrefix(toks, t)) continue;
+        const bound = fuzzyBound(t.length);
+        if (!bound) { ok = false; break; }
+        let best = bound + 1;
+        for (let j = 0; j < toks.length && best > 0; j++) {
+          // compare against the token and, for longer tokens, its same-length prefix
+          const cand = toks[j];
+          best = Math.min(best, boundedDistance(t, cand, bound));
+          if (cand.length > t.length) best = Math.min(best, boundedDistance(t, cand.slice(0, t.length), bound));
+        }
+        if (best > bound) ok = false; else { total += best; edited = true; }
+      }
+      if (ok && edited) {
+        const score = Math.max(SCORE.fuzzyMin, SCORE.fuzzyMax - (total - 1) * 7);
+        return { score, matchType: "fuzzy" };
+      }
+    }
+    return null;
+  }
+
+  function scoreRecord(record, q, opts) {
+    let best = null;
+    const fields = record._fields;
+    for (let i = 0; i < fields.length; i++) {
+      const r = scoreField(fields[i], q, opts);
+      if (r && (!best || r.score > best.score || (r.score === best.score && MATCH_RANK[r.matchType] > MATCH_RANK[best.matchType]))) best = r;
+    }
+    return best;
+  }
+
+  // Deterministic order: score, match strength, shorter title, alphabetical, id.
+  function compareResults(a, b) {
+    return (b.score - a.score)
+      || (MATCH_RANK[b.matchType] - MATCH_RANK[a.matchType])
+      || (a.item.title.length - b.item.title.length)
+      || (a.item.title < b.item.title ? -1 : a.item.title > b.item.title ? 1 : 0)
+      || (a.item.id < b.item.id ? -1 : a.item.id > b.item.id ? 1 : 0);
+  }
+
+  /* ======================= SearchIndex ======================= */
+  class SearchIndex {
+    constructor() { this.collections = new Map(); }
+    _col(name) {
+      let c = this.collections.get(name);
+      if (!c) { c = { records: new Map(), kinds: {}, version: 0 }; this.collections.set(name, c); }
+      return c;
+    }
+    define(name, fieldKinds) { this._col(name).kinds = Object.assign({}, fieldKinds); return this; }
+    // Adds or replaces one record; returns the normalized record.
+    add(name, input) {
+      const c = this._col(name);
+      const r = createRecord(input, c.kinds);
+      c.records.set(r.id, r); c.version++;
+      return r;
+    }
+    remove(name, id) {
+      const c = this.collections.get(name);
+      if (!c) return false;
+      const ok = c.records.delete(String(id));
+      if (ok) c.version++;
+      return ok;
+    }
+    // Replaces a whole collection (used only at startup / after an import).
+    load(name, inputs) {
+      const c = this._col(name);
+      c.records.clear();
+      (inputs || []).forEach(input => {
+        try { const r = createRecord(input, c.kinds); c.records.set(r.id, r); }
+        catch (e) { /* corrupted metadata: skip that record, keep the rest */ }
+      });
+      c.version++;
+    }
+    get(name, id) { const c = this.collections.get(name); return c ? c.records.get(String(id)) || null : null; }
+    size(name) { const c = this.collections.get(name); return c ? c.records.size : 0; }
+    all(name) { const c = this.collections.get(name); return c ? Array.from(c.records.values()) : []; }
+    version(name) { const c = this.collections.get(name); return c ? c.version : 0; }
+  }
+
+  /* ======================= SearchController ======================= */
+  class SearchController {
+    constructor(options) {
+      this.index = new SearchIndex();
+      this.options = Object.assign({}, DEFAULTS, options || {});
+      this._cache = new Map(); // key: collection|version|query|limit -> results (small, cleared on change)
+    }
+    define(name, kinds) { this.index.define(name, kinds); return this; }
+    load(name, items) { this.index.load(name, items); this._cache.clear(); }
+    add(name, item) { const r = this.index.add(name, item); this._cache.clear(); return r; }
+    remove(name, id) { const ok = this.index.remove(name, id); if (ok) this._cache.clear(); return ok; }
+    size(name) { return this.index.size(name); }
+
+    // search({ collection, query, limit }) -> [{ item, score, matchType }]
+    // score and matchType are internal: never show them to people.
+    search(req) {
+      let results = [];
+      try {
+        const collection = req && req.collection;
+        const limit = clampLimit(req && req.limit, this.options.limit);
+        const q = prepareQuery(req && req.query);
+        if (!collection || !q) return results;
+        const key = collection + "|" + this.index.version(collection) + "|" + q.raw + "|" + limit + "|" + this.options.ranking;
+        const hit = this._cache.get(key);
+        if (hit) return hit;
+        const c = this.index.collections.get(collection);
+        if (!c) return results;
+        const found = [];
+        c.records.forEach(record => {
+          const s = scoreRecord(record, q, this.options);
+          if (s) found.push({ item: record, score: s.score, matchType: s.matchType });
+        });
+        found.sort(compareResults);
+        results = found.slice(0, limit);
+        if (this._cache.size > 24) this._cache.clear();
+        this._cache.set(key, results);
+        return results;
+      } catch (e) {
+        // Search must never break the app: report nothing, keep going.
+        return [];
+      }
+    }
+
+    // Did-you-mean: only when a query found nothing and one clearly strong candidate exists.
+    suggest(req) {
+      try {
+        const collection = req && req.collection;
+        const q = prepareQuery(req && req.query);
+        if (!collection || !q || q.phoneLike) return null;
+        if (this.search({ collection, query: req.query, limit: 1 }).length) return null;
+        const c = this.index.collections.get(collection);
+        if (!c) return null;
+        let best = null, bestDist = Infinity, tie = false;
+        const qtext = q.norm.replace(/ /g, "");
+        c.records.forEach(record => {
+          record._fields.forEach(f => {
+            if (f.kind === "phone") return;
+            const cands = f.toks.concat([f.norm]);
+            cands.forEach(cand => {
+              const bound = suggestBound(qtext.length);
+              if (!bound) return;
+              const d = Math.min(boundedDistance(q.norm, cand, bound), boundedDistance(qtext, cand, bound));
+              if (d > bound) return;
+              if (d < bestDist) { bestDist = d; best = record; tie = false; }
+              else if (d === bestDist && best && best.id !== record.id) tie = true;
+            });
+          });
+        });
+        // Never offer a weak or ambiguous guess.
+        if (!best || tie) return null;
+        return { item: best, text: best.title };
+      } catch (e) { return null; }
+    }
+  }
+
+  function clampLimit(v, d) { const n = Number(v); return Number.isFinite(n) && n > 0 ? Math.min(200, Math.floor(n)) : d; }
+
+  return {
+    SCORE,
+    normalizeTitle, normalizeName, normalizeFilename, normalizePhone, isPhoneLike, phonesMatch,
+    tokenize, boundedDistance, createRecord, prepareQuery,
+    SearchIndex, SearchController,
+  };
+});
+
+</script>
 <script>
 (() => {
 "use strict";
@@ -429,7 +815,8 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
 const DURATIONS = [15, 30, 45, 60];            // APPROVED values; cycles 60 → 15 (user-approved change)
 const DEFAULT_INDEX = 0;                       // APPROVED: always opens on 15
 const ITEM_W = 58;                             // px of finger travel per step
-const TAP_SLOP = 7;                            // px before a touch counts as a slide
+const TAP_SLOP = 7;
+const FLICK_VELOCITY = 0.0035;                 // items per ms (~0.2 px/ms at 58 px per item)                            // px before a touch counts as a slide
 const REPEAT_CALL_WINDOW_MIN = 15;             // Android's repeat-caller window
 const DONATION_LINK = null;                    // NOT APPROVED — no link yet
 const SCENES = [
@@ -466,6 +853,13 @@ const QUOTES = [                               // APPROVED list
   ["The task at hand.", "Marcus Aurelius"],
 ];
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
+function digitsOf(v) { return String(v || "").replace(/\D+/g, ""); }
+function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+// Same number, allowing a 1–3 digit country code on either side.
+function samePhone(a, b) {
+  if (window.FFSearch) return FFSearch.phonesMatch(a, b);
+  return !!a && a === b;
+}
 const motionOK = () => !reduceMotion.matches && typeof Element.prototype.animate === "function";
 const EASE = "cubic-bezier(.22,.8,.2,1)";
 const $ = id => document.getElementById(id);
@@ -483,7 +877,10 @@ function loadSettings() {
       if (typeof raw.scene === "string") s.scene = raw.scene;
       if (typeof raw.alarmSafety === "boolean") s.alarmSafety = raw.alarmSafety;
       if (typeof raw.trustedOn === "boolean") s.trustedOn = raw.trustedOn;
-      if (Array.isArray(raw.contacts)) s.contacts = raw.contacts.filter(c => c && typeof c.name === "string" && typeof c.number === "string").slice(0, 50);
+      if (Array.isArray(raw.contacts)) s.contacts = raw.contacts
+        .filter(c => c && typeof c.name === "string" && typeof c.number === "string" && digitsOf(c.number).length >= 3)
+        .slice(0, 50)
+        .map(c => ({ id: typeof c.id === "string" && c.id ? c.id : newId(), name: c.name.slice(0, 40), number: c.number, normalized: digitsOf(c.number) }));
       s.previewAck = raw.previewAck === true;
     }
   } catch (e) { /* corrupt or blocked storage: fall back to defaults */ }
@@ -494,6 +891,31 @@ function saveSettings() {
   catch (e) { toast("Couldn't save settings on this device."); }
 }
 const settings = loadSettings();
+
+/* ================= Local search wiring ================= */
+const searcher = (() => {
+  try {
+    if (!window.FFSearch) return null;
+    const c = new FFSearch.SearchController();
+    c.define("sounds", { title: "title" });
+    c.define("scenes", { title: "title" });
+    c.define("trustedContacts", { name: "name", phone: "phone" });
+    c.load("sounds", SOUNDS.map(x => ({ id: x.id, type: "sound", title: x.name, searchableFields: { title: x.name } }))
+      .concat([{ id: "random", type: "sound", title: "Random", searchableFields: { title: "Random" } }]));
+    c.load("scenes", SCENES.map(x => ({ id: x.id, type: "scene", title: x.name, searchableFields: { title: x.name } }))
+      .concat([{ id: "random", type: "scene", title: "Random", searchableFields: { title: "Random" } }]));
+    c.load("trustedContacts", settings.contacts.map(contactRecord));
+    return c;
+  } catch (e) { return null; } // search is optional: Focus works without it
+})();
+function contactRecord(c) {
+  return { id: c.id, type: "trusted-contact", title: c.name, subtitle: c.number, searchableFields: { name: c.name, phone: c.number } };
+}
+function assetRecord(a) {
+  return { id: a.id, type: a.type === "img" ? "picture" : "user-sound", title: a.name, searchableFields: { title: a.name } };
+}
+function indexAdd(collection, record) { try { searcher && searcher.add(collection, record); } catch (e) { /* never block */ } }
+function indexRemove(collection, id) { try { searcher && searcher.remove(collection, id); } catch (e) { /* never block */ } }
 
 // User pictures and sounds live in IndexedDB on this device only.
 const assets = []; // {id, type:'img'|'snd', name, blob, url}
@@ -526,14 +948,20 @@ async function loadAssets() {
   if (!db) { validateSelections(); renderSettings(); return; }
   try {
     const all = await dbTx("readonly", st => st.getAll());
-    (all || []).forEach(a => { if (a && a.blob && (a.type === "img" || a.type === "snd")) assets.push({ ...a, url: URL.createObjectURL(a.blob) }); });
+    (all || []).forEach(a => {
+      // Skip missing or corrupted media instead of failing the whole list.
+      if (!a || !a.blob || !a.id || (a.type !== "img" && a.type !== "snd")) return;
+      const item = { ...a, name: typeof a.name === "string" && a.name ? a.name : "Untitled", url: URL.createObjectURL(a.blob) };
+      assets.push(item);
+      indexAdd(item.type === "img" ? "scenes" : "sounds", assetRecord(item));
+    });
   } catch (e) { /* ignore unreadable store */ }
   validateSelections();
   renderSettings();
 }
 function validateSelections() {
   const has = id => assets.some(a => a.id === id);
-  const soundIds = SOUNDS.map(s => s.id).concat("random");
+  const soundIds = SOUNDS.map(s => s.id).concat("random", "none");
   if (settings.audio.startsWith("snd:") ? !has(settings.audio) : !soundIds.includes(settings.audio)) settings.audio = "white";
   const sceneIds = SCENES.map(s => s.id).concat("random");
   if (settings.scene.startsWith("img:") ? !has(settings.scene) : !sceneIds.includes(settings.scene)) settings.scene = DEFAULT_SCENE;
@@ -550,13 +978,26 @@ async function addAsset(type, blob, name) {
   }
   const a = { ...rec, url: URL.createObjectURL(blob) };
   assets.push(a); justAdded.add(id);
+  indexAdd(type === "img" ? "scenes" : "sounds", assetRecord(a));
   return a;
 }
-async function removeAsset(id) {
+async function removeAsset(id, node) {
   try { await dbTx("readwrite", st => st.delete(id)); } catch (e) { toast("Couldn't remove that file."); return; }
   const i = assets.findIndex(a => a.id === id);
+  if (player.voice && player.voice.choice.id === id) releaseSound(0.03); // its preview can't outlive the file
   if (i >= 0) { URL.revokeObjectURL(assets[i].url); assets.splice(i, 1); }
-  validateSelections(); saveSettings(); renderSettings();
+  indexRemove(id.startsWith("img:") ? "scenes" : "sounds", id);
+  validateSelections(); saveSettings();
+  await slideOut(node);
+  renderSettings();
+}
+// Removed items slide out (immediate with reduced motion).
+function slideOut(node) {
+  return new Promise(res => {
+    if (!node || !motionOK()) return res();
+    const a = node.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateX(18px)" }], { duration: 300, easing: EASE, fill: "forwards" });
+    a.onfinish = res; a.oncancel = res;
+  });
 }
 
 /* ================= Transitions ================= */
@@ -585,11 +1026,12 @@ function setScreen(id) {
   }
   a.style.pointerEvents = "none";
   const out = a.animate(outK, { duration: 480, easing: EASE, fill: "forwards" });
-  b.animate(inK, { duration: 620, delay: 80, easing: EASE, fill: "backwards" });
+  const into = b.animate(inK, { duration: 620, delay: 80, easing: EASE, fill: "backwards" });
   out.onfinish = () => {
     if (visibleScreen !== from) a.hidden = true;
     out.cancel(); a.style.pointerEvents = "";
   };
+  return into; // the incoming page's animation (lets Focus's sound move in step with it)
 }
 const MODALS = ["permSheet", "barrier", "confirmEnd", "donateSheet"];
 function openModal(id) {
@@ -740,8 +1182,11 @@ function hideHint() { $("hint").classList.add("gone"); }
     down = false; setActive("home", false);
     if (axis) swallow = true;                // a slide never starts a session
     if (axis === "x") {
-      const projected = pos + vel * 160, base = Math.round(startPos);
-      snapTo(Math.max(base - 3, Math.min(base + 3, Math.round(projected))));
+      const base = Math.round(startPos), dragged = Math.round(pos);
+      // The drag decides; a quick flick that didn't reach the next value moves exactly one step.
+      let target = dragged;
+      if (dragged === base && Math.abs(vel) > FLICK_VELOCITY) target = base + Math.sign(vel);
+      snapTo(target);
     } else snapTo(Math.round(pos));         // a tap mid-snap still lands on a whole value
   };
   btn.addEventListener("pointerup", release);
@@ -854,11 +1299,12 @@ function startSession() {
 
   const sceneChoice = resolveScene();
   const soundChoice = resolveSound();
-  $("sessionFoot").textContent = soundChoice.name + " · " + sceneChoice.name;
+  $("sessionFoot").textContent = soundChoice ? soundChoice.name + " · " + sceneChoice.name : sceneChoice.name;
 
   startScene(sceneChoice);
-  setScreen("session");
-  startAudio(soundChoice);
+  const pageIn = setScreen("session");
+  say(`Focus started. ${minutes} minutes.`);
+  startSessionSound(soundChoice, pageIn); // fades in with the page transition
   acquireWakeLock();
   lastAnnounced = null;
   tick();
@@ -897,7 +1343,7 @@ function finish(natural) {
   clearInterval(tickTimer); tickTimer = null;
   distraction.endDistractionReduction();
   distraction.restorePreviousSystemState();
-  stopAudio();
+  releaseSound(0.9);
   releaseWakeLock();
   setActive("session", false);
   closeModals();
@@ -911,6 +1357,7 @@ function showDone(natural) {
   $("quoteText").textContent = "“" + q + "”";
   $("quoteCite").textContent = "— " + who;
   setScreen("done");
+  say(natural ? "Session complete." : "Session ended.");
   setTimeout(stopScene, 700); // keep the view on screen while it fades out
   $("doneBtn").focus({ preventScroll: true });
 }
@@ -937,7 +1384,7 @@ async function acquireWakeLock() {
 function releaseWakeLock() { try { wakeLock && wakeLock.release(); } catch (e) {} wakeLock = null; }
 
 /* ================= Audio: eight noise colours ================= */
-let ac = null, noiseSrc = null, noiseGain = null, userAudio = null, fadeTimer = null;
+let ac = null;
 const bufCache = {};
 function actx() {
   if (!ac) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; ac = new C(); }
@@ -985,47 +1432,122 @@ function colourChain(ctx, kind) {
     default:       return [];
   }
 }
-function resolveSound() {
-  let id = settings.audio;
+function soundChoiceFor(id) {
   if (id === "random") {
     const pool = [...SOUNDS.map(s => s.id), ...assets.filter(a => a.type === "snd").map(a => a.id)];
     id = pool[Math.floor(Math.random() * pool.length)];
   }
   const b = SOUNDS.find(s => s.id === id); if (b) return { id, name: b.name, gain: b.gain };
   const a = assets.find(x => x.id === id);
-  return a ? { id, name: a.name, url: a.url } : { id: "white", name: "White Noise", gain: SOUNDS[0].gain };
+  return a ? { id, name: a.name, url: a.url } : null;
 }
-function startAudio(choice) {
-  stopAudio(true);
-  if (choice.url) {
-    userAudio = new Audio(choice.url);
-    userAudio.loop = true; userAudio.volume = 0;
-    userAudio.play().catch(() => toast("Couldn't play that sound. Try another in Settings."));
-    let v = 0; fadeTimer = setInterval(() => { v = Math.min(1, v + 0.05); if (userAudio) userAudio.volume = v; if (v >= 1) clearInterval(fadeTimer); }, 110);
-    return;
-  }
-  const ctx = actx(); if (!ctx) { toast("Sound isn't available in this browser."); return; }
+// null = no sound chosen (Focus is silent).
+function resolveSound() {
+  if (settings.audio === "none") return null;
+  return soundChoiceFor(settings.audio) || { id: "white", name: "White Noise", gain: SOUNDS[0].gain };
+}
+
+// One sound at a time: source → colour filters → loudness → fade → speakers.
+// Fades are scheduled on the audio clock; the current level is tracked so any fade can
+// start smoothly from wherever the previous one had got to.
+const PREVIEW_MS = 5000, PREVIEW_FADE = 0.9, SWITCH_FADE = 0.45;
+const easeInOut = k => 0.5 - 0.5 * Math.cos(Math.PI * k);
+function makeVoice(choice) {
+  const ctx = actx(); if (!ctx) { toast("Sound isn't available in this browser."); return null; }
   try {
-    noiseSrc = ctx.createBufferSource(); noiseSrc.buffer = noiseBuffer(ctx, choice.id); noiseSrc.loop = true;
-    noiseGain = ctx.createGain(); noiseGain.gain.setValueAtTime(0, ctx.currentTime);
-    noiseGain.gain.linearRampToValueAtTime(choice.gain, ctx.currentTime + 2.2);
-    let node = noiseSrc;
-    colourChain(ctx, choice.id).forEach(fl => { node.connect(fl); node = fl; });
-    node.connect(noiseGain).connect(ctx.destination);
-    noiseSrc.start();
-  } catch (e) { toast("Couldn't start the sound."); }
+    const fade = ctx.createGain(); fade.gain.value = 0; fade.connect(ctx.destination);
+    const v = { choice, fade, lvl: { from: 0, to: 0, t0: 0, t1: 0, ease: easeInOut } };
+    if (choice.url) {
+      const el = new Audio(choice.url); el.loop = true;
+      const src = ctx.createMediaElementSource(el); src.connect(fade);
+      el.play().catch(() => toast("Couldn't play that sound. Try another in Settings."));
+      v.stop = () => { el.pause(); el.removeAttribute("src"); src.disconnect(); fade.disconnect(); };
+    } else {
+      const src = ctx.createBufferSource(); src.buffer = noiseBuffer(ctx, choice.id); src.loop = true;
+      const loud = ctx.createGain(); loud.gain.value = choice.gain;
+      let node = src;
+      colourChain(ctx, choice.id).forEach(fl => { node.connect(fl); node = fl; });
+      node.connect(loud).connect(fade);
+      src.start();
+      v.stop = () => { try { src.stop(); } catch (e) {} src.disconnect(); fade.disconnect(); };
+    }
+    return v;
+  } catch (e) { toast("Couldn't start the sound."); return null; }
 }
-function stopAudio(immediate) {
-  clearInterval(fadeTimer);
-  if (userAudio) { const a = userAudio; userAudio = null; a.pause(); a.src = ""; }
-  if (noiseSrc && ac) {
-    const s = noiseSrc, g = noiseGain; noiseSrc = null; noiseGain = null;
-    try {
-      g.gain.cancelScheduledValues(ac.currentTime);
-      g.gain.setTargetAtTime(0, ac.currentTime, immediate ? 0.02 : 0.35);
-      setTimeout(() => { try { s.stop(); s.disconnect(); g.disconnect(); } catch (e) {} }, immediate ? 60 : 900);
-    } catch (e) {}
-  }
+function levelOf(v) {
+  const L = v.lvl, t = ac.currentTime;
+  if (t >= L.t1) return L.to; if (t <= L.t0) return L.from;
+  return L.from + (L.to - L.from) * L.ease((t - L.t0) / (L.t1 - L.t0));
+}
+function fadeVoice(v, to, secs, delay = 0, ease = easeInOut) {
+  const p = v.fade.gain, now = ac.currentTime, from = levelOf(v), t0 = now + delay;
+  v.lvl = { from, to, t0, t1: t0 + secs, ease };
+  p.cancelScheduledValues(now); p.setValueAtTime(from, now);
+  if (delay) p.setValueAtTime(from, t0);
+  const n = 16; // a smooth curve made of short linear steps
+  for (let i = 1; i <= n; i++) p.linearRampToValueAtTime(from + (to - from) * ease(i / n), t0 + secs * i / n);
+}
+const player = { voice: null, pending: null, timers: [] };
+function later(ms, fn) { player.timers.push(setTimeout(fn, ms)); }
+function clearLater() { player.timers.forEach(clearTimeout); player.timers = []; }
+// Fades the current sound out and lets it go; nothing is left playing afterwards.
+function releaseSound(secs) {
+  clearLater(); player.pending = null;
+  const v = player.voice; if (!v) return;
+  player.voice = null;
+  fadeVoice(v, 0, secs);
+  setTimeout(v.stop, secs * 1000 + 60);
+}
+// Settings preview: fade in, hold, fade out, silent at exactly 5 s.
+function beginPreview(choice) {
+  const v = makeVoice(choice); if (!v) return;
+  player.voice = v;
+  fadeVoice(v, 1, PREVIEW_FADE);
+  later(PREVIEW_MS - PREVIEW_FADE * 1000, () => {
+    fadeVoice(v, 0, PREVIEW_FADE);
+    later(PREVIEW_FADE * 1000, () => { if (player.voice === v) { player.voice = null; v.stop(); } });
+  });
+}
+// Switching sounds: the current one fades out; at the midpoint (silence) it stops and the
+// next one starts fading in. Quick taps only change which sound comes next, so two sounds
+// never overlap and nothing clicks.
+function previewSound(choice) {
+  clearLater();
+  const v = player.voice;
+  if (!v) { beginPreview(choice); return; }
+  player.pending = choice;
+  // Proportional to the current level, but never shorter than 120 ms, so a burst of taps
+  // lands inside one fade and only the last choice plays.
+  const secs = Math.max(0.12, SWITCH_FADE * levelOf(v));
+  fadeVoice(v, 0, secs);
+  later(secs * 1000, () => {
+    const next = player.pending; player.pending = null;
+    if (player.voice === v) { player.voice = null; v.stop(); }
+    if (next) beginPreview(next);
+  });
+}
+// Re-tapping the chosen sound: fade out from wherever it is.
+function fadeOutPreview() { if (player.voice) releaseSound(Math.max(0.03, PREVIEW_FADE * levelOf(player.voice))); else { clearLater(); player.pending = null; } }
+// Focus: the sound fades in in step with the page transition. Every frame, its level is
+// set to the page animation's own progress (same delay, duration and easing), so the
+// sound can't run ahead of or behind what's on screen. Then it plays on a loop until the
+// session ends. Without animation: a short click-free fade.
+const linear = k => k;
+function startSessionSound(choice, pageIn) {
+  releaseSound(0.03);
+  if (!choice) return;
+  const v = makeVoice(choice); if (!v) return;
+  player.voice = v;
+  if (!pageIn || !pageIn.effect) { fadeVoice(v, 1, 0.25); return; }
+  const step = () => {
+    if (player.voice !== v || v.lvl.to >= 1) return;
+    const live = pageIn.playState === "running" || pageIn.playState === "pending";
+    const k = live ? Math.min(1, Math.max(0, pageIn.effect.getComputedTiming().progress || 0)) : 1;
+    fadeVoice(v, k, 0.03, 0, linear);
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+  setTimeout(() => { if (player.voice === v && v.lvl.to < 1) fadeVoice(v, 1, 0.25); }, 1500); // e.g. page hidden mid-transition
 }
 function playChime() {
   const ctx = actx(); if (!ctx) return;
@@ -1206,7 +1728,7 @@ function createOrb(canvas) {
         const uRes = gl.getUniformLocation(prog, "uRes"), uTime = gl.getUniformLocation(prog, "uTime"), uAct = gl.getUniformLocation(prog, "uAct");
         return {
           draw(t, a) {
-            const dpr = Math.min(1.35, window.devicePixelRatio || 1), W = Math.max(2, Math.round(canvas.clientWidth * dpr));
+            const dpr = Math.min(orbQuality, window.devicePixelRatio || 1), W = Math.max(2, Math.round(canvas.clientWidth * dpr));
             if (canvas.width !== W) { canvas.width = W; canvas.height = W; }
             gl.viewport(0, 0, W, W);
             gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
@@ -1419,15 +1941,15 @@ function paintImage(c, w, h, img) {
   c.fillStyle = "#000"; c.fillRect(0, 0, w, h);
   c.drawImage(img, (w - iw) / 2, (h - ih) / 2, iw, ih);
 }
-function resolveScene() {
-  let id = settings.scene;
+function resolveScene() { return sceneChoiceFor(settings.scene) || { id: DEFAULT_SCENE, name: SCENES[0].name }; }
+function sceneChoiceFor(id) {
   if (id === "random") {
     const pool = [...SCENES.map(s => s.id), ...assets.filter(a => a.type === "img").map(a => a.id)];
     id = pool[Math.floor(Math.random() * pool.length)];
   }
   const b = SCENES.find(s => s.id === id); if (b) return { id, name: b.name };
   const a = assets.find(x => x.id === id);
-  return a ? { id, name: a.name, url: a.url } : { id: DEFAULT_SCENE, name: SCENES[0].name };
+  return a ? { id, name: a.name, url: a.url } : null;
 }
 let sceneImg = null, sceneChoice = null;
 function drawScene(t) {
@@ -1448,6 +1970,18 @@ function stopScene() { if (visibleScreen !== "session") { sceneChoice = null; sc
 
 /* ================= One animation loop ================= */
 let dirty = true, lastFrame = 0;
+// Battery/frame budget: if animated frames keep arriving late, render the orb at a lower
+// resolution (1.35× → 1× → 0.75×). The look stays the same; the GPU does less work.
+let orbQuality = 1.35, slowFrames = 0, frameSamples = 0;
+function trackFrameCost(gap) {
+  if (gap > 200) return;               // tab switch or pause, not a slow frame
+  frameSamples++;
+  if (gap > 48) slowFrames++;          // well under the 30 fps target
+  if (frameSamples >= 90) {
+    if (slowFrames > 30 && orbQuality > 0.75) { orbQuality = orbQuality > 1 ? 1 : 0.75; }
+    frameSamples = 0; slowFrames = 0;
+  }
+}
 const T0 = performance.now();
 function markDirty() { dirty = true; }
 function frame(now) {
@@ -1465,11 +1999,13 @@ function frame(now) {
   }
   if (!animate && !dirty && !settling) return;
   if (!dirty && now - lastFrame < 33) return;
+  if (animate && lastFrame) trackFrameCost(now - lastFrame);
   lastFrame = now; const wasDirty = dirty; dirty = false;
   const t = animate ? (now - T0) / 1000 : 20;
   const onSession = visibleScreen === "session" || !$("session").hidden;
   if (onSession && sceneChoice && (!sceneChoice.url || wasDirty)) drawScene(t);
-  if (visibleScreen !== "session" || !$("home").hidden || !$("done").hidden || !$("settings").hidden) drawNebula(t);
+  if ((visibleScreen !== "session" && visibleScreen !== "settings") || !$("home").hidden || !$("done").hidden) drawNebula(t);
+  if (!$("settings").hidden && setBg && (!setBg.url || wasDirty)) drawAtmosphere(t);
   if (!$("home").hidden) orb("home").draw(t, act.home.v);
   if (!$("session").hidden) orb("session").draw(t, act.session.v);
   if (!$("done").hidden) orb("done").draw(t, 0);
@@ -1490,30 +2026,60 @@ function renderSound() {
     ...assets.filter(a => a.type === "snd").map(a => [a.id, a.name, "YOURS"])];
   opts.forEach(([id, name, kind]) => {
     const choice = el("button", { class: "choice", role: "radio", "aria-checked": String(settings.audio === id),
-      onclick: () => selectSound(id) },
+      onclick: () => tapSound(id) },
       [el("span", { class: "radio", "aria-hidden": "true" }), el("span", { class: "nm", text: name }), el("span", { class: "kind", text: kind })]);
     choice.dataset.id = id;
     let row = choice;
-    if (id.startsWith("snd:")) row = el("div", { class: "row-wrap" }, [choice, el("button", { class: "rm", "aria-label": "Remove " + name, text: "×", onclick: () => removeAsset(id) })]);
+    if (id.startsWith("snd:")) row = el("div", { class: "row-wrap" }, [choice, el("button", { class: "rm", "aria-label": "Remove " + name, text: "×", onclick: () => removeAsset(id, row) })]);
+    row.dataset.sid = id;
     list.appendChild(row);
     if (justAdded.delete(id)) enterItem(row);
   });
+  soundFilter.sync(opts.length);
 }
 // Update selection in place so the radio ember animates instead of the list re-rendering.
-function selectSound(id) {
-  settings.audio = id; saveSettings();
-  $("soundList").querySelectorAll(".choice").forEach(b => b.setAttribute("aria-checked", String(b.dataset.id === id)));
+// Tapping a sound selects it and plays a 5-second preview; tapping the chosen sound again
+// fades it out and deselects it (Focus is then silent). Search's Enter always selects.
+function tapSound(id, fromSearch) {
+  const deselect = settings.audio === id && !fromSearch;
+  settings.audio = deselect ? "none" : id; saveSettings();
+  $("soundList").querySelectorAll(".choice").forEach(b => b.setAttribute("aria-checked", String(b.dataset.id === settings.audio)));
+  if (deselect) { fadeOutPreview(); return; }
+  const c = soundChoiceFor(id); if (c) previewSound(c);
 }
 function selectScene(id) {
   settings.scene = id; saveSettings();
   $("sceneList").querySelectorAll(".scene-opt").forEach(b => b.setAttribute("aria-checked", String(b.dataset.id === id)));
+  showAtmosphere(id, true);
+}
+// Settings' background is the chosen atmosphere, and changes (crossfading) as you choose.
+let setBg = null, setBgImg = null, setBgFor = null;
+function showAtmosphere(id, animate) {
+  const cur = $("setScene"), old = $("setSceneOld");
+  if (animate && setBg && motionOK() && cur.width > 1) {
+    const { c, w, h } = fit(old, 1);
+    c.drawImage(cur, 0, 0, w, h);
+    old.getAnimations().forEach(x => x.cancel());
+    old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 700, easing: EASE });
+  }
+  setBgFor = id;
+  setBg = sceneChoiceFor(id) || { id: DEFAULT_SCENE, name: SCENES[0].name };
+  setBgImg = null;
+  if (setBg.url) { setBgImg = new Image(); setBgImg.onload = markDirty; setBgImg.src = setBg.url; }
+  markDirty();
+}
+function drawAtmosphere(t) {
+  const { c, w, h } = fit($("setScene"), 1);
+  if (setBg.url) { if (setBgImg && setBgImg.complete && setBgImg.naturalWidth) paintImage(c, w, h, setBgImg); else { c.fillStyle = "#000"; c.fillRect(0, 0, w, h); } return; }
+  PAINT[setBg.id](c, w, h, t);
 }
 function renderScenes() {
+  if (setBgFor !== settings.scene) showAtmosphere(settings.scene, !$("settings").hidden);
   const list = $("sceneList"); list.textContent = "";
   const tile = (id, name, media) => {
     const b = el("button", { class: "scene-opt", role: "radio", "aria-checked": String(settings.scene === id), "aria-label": name,
       onclick: () => selectScene(id) }, [media, el("span", { class: "cap", text: name, "aria-hidden": "true" })]);
-    b.dataset.id = id; return b;
+    b.dataset.id = id; b.dataset.sid = id; return b;
   };
   SCENES.forEach(s => {
     const cv = el("canvas", { "aria-hidden": "true" });
@@ -1523,39 +2089,64 @@ function renderScenes() {
   const rnd = el("span", { class: "random-tile", "aria-hidden": "true" });
   rnd.innerHTML = '<svg viewBox="0 0 24 24"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>';
   list.appendChild(tile("random", "Random", rnd));
-  assets.filter(a => a.type === "img").forEach(a => {
+  const pics = assets.filter(a => a.type === "img");
+  pics.forEach(a => {
     const wrap = tile(a.id, a.name, el("img", { src: a.url, alt: "" }));
-    const x = el("button", { class: "x", "aria-label": "Remove " + a.name, text: "×", onclick: e => { e.stopPropagation(); removeAsset(a.id); } });
-    const holder = el("div", { style: "position:relative" }, [wrap, x]);
+    delete wrap.dataset.sid;
+    let holder;
+    const x = el("button", { class: "x", "aria-label": "Remove " + a.name, text: "×", onclick: e => { e.stopPropagation(); removeAsset(a.id, holder); } });
+    holder = el("div", { style: "position:relative" }, [wrap, x]);
+    holder.dataset.sid = a.id;
     list.appendChild(holder);
     if (justAdded.delete(a.id)) enterItem(holder);
   });
+  sceneFilter.sync(SCENES.length + 1 + pics.length);
 }
 function renderContacts() {
   const list = $("contactList"); list.textContent = "";
-  if (!settings.contacts.length) { list.appendChild(el("p", { class: "empty", text: "No Trusted Contacts yet." })); return; }
+  if (!settings.contacts.length) {
+    list.appendChild(el("div", { class: "search-empty", role: "listitem" }, [
+      el("b", { text: "No trusted contacts yet" }),
+      el("p", { text: "Add someone you want to be able to reach you during Focus." }),
+    ]));
+    contactFilter.sync(0);
+    return;
+  }
   settings.contacts.forEach(c => {
-    const row = el("div", { class: "contact" }, [
-      el("div", { class: "who" }, [el("b", { text: c.name }), el("span", { text: c.number })]),
+    let row;
+    row = el("div", { class: "contact", role: "listitem", tabindex: "-1", "aria-label": c.name + ", " + c.number }, [
+      el("div", { class: "who", "aria-hidden": "true" }, [el("b", { text: c.name }), el("span", { text: c.number })]),
       el("button", { class: "rm", "aria-label": "Remove " + c.name, text: "×", onclick: () => removeContact(c.id, row) }),
     ]);
+    row.dataset.sid = c.id;
     list.appendChild(row);
     if (justAdded.delete(c.id)) enterItem(row);
   });
+  contactFilter.sync(settings.contacts.length);
 }
 function removeContact(id, row) {
-  const done = () => { settings.contacts = settings.contacts.filter(x => x.id !== id); saveSettings(); renderContacts(); renderTrust(); };
-  if (!motionOK()) return done();
-  row.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateX(18px)" }], { duration: 300, easing: EASE, fill: "forwards" }).onfinish = done;
+  const done = () => {
+    const gone = settings.contacts.find(x => x.id === id);
+    settings.contacts = settings.contacts.filter(x => x.id !== id);
+    indexRemove("trustedContacts", id);
+    saveSettings(); renderContacts(); renderTrust();
+    if (gone) toast("Removed " + gone.name);
+    const next = $("contactQuery").hidden || $("contactSearch").hidden ? $("cName") : $("contactQuery");
+    next.focus({ preventScroll: true });
+  };
+  slideOut(row).then(done);
 }
+// Returns an error message, or null when the contact was added.
 function addContact(name, number) {
   number = String(number || "").trim(); name = String(name || "").trim() || number;
-  if (!/^[+()\d\s.-]{3,24}$/.test(number)) return "Add a name and a phone number.";
-  if (settings.contacts.some(c => c.number.replace(/\D/g, "") === number.replace(/\D/g, ""))) return "That number is already a Trusted Contact.";
+  if (!/^[+()\d\s.\-]{3,24}$/.test(number) || digitsOf(number).length < 3) return "Add a name and a phone number.";
+  const normalized = digitsOf(number);
+  if (settings.contacts.some(c => samePhone(c.normalized || digitsOf(c.number), normalized))) return "That number is already a Trusted Contact.";
   if (settings.contacts.length >= 50) return "You can add up to 50 Trusted Contacts.";
-  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
-  settings.contacts.push({ id, name: name.slice(0, 40), number });
-  justAdded.add(id);
+  const contact = { id: newId(), name: name.slice(0, 40), number, normalized };
+  settings.contacts.push(contact);
+  indexAdd("trustedContacts", contactRecord(contact));
+  justAdded.add(contact.id);
   return null;
 }
 function renderToggle(sw, label, on) {
@@ -1567,17 +2158,126 @@ function renderTrust() {
   $("contactCard").classList.toggle("dim", !settings.trustedOn);
   const n = settings.contacts.length;
   $("trustNote").textContent = settings.trustedOn
-    ? (n ? `On: ${n} ${n === 1 ? "person" : "people"} can reach you during Focus. Stored only on this device.` : "On, but no one is added yet. Stored only on this device.")
-    : "Off: everyone is blocked during Focus, except emergency alerts and repeat callers. Turn on to let these people through.";
+    ? (n ? `On: ${n} ${n === 1 ? "person" : "people"} can reach you during Focus in the Android app. Stored only on this device.`
+         : "On, but no one is added yet. Stored only on this device.")
+    : "The Trusted Contacts list is off. During Focus, only emergency alerts and repeat callers get through. Stored only on this device.";
 }
 function renderAlarm() { renderToggle($("alarmSwitch"), $("alarmState"), settings.alarmSafety); }
 function renderPerm() { $("permPill").textContent = settings.previewAck ? "Preview only" : "Not set up"; }
 function renderSettings() { renderSound(); renderScenes(); renderContacts(); renderTrust(); renderAlarm(); renderPerm(); }
 
-$("openSettings").onclick = () => { if (state !== "IDLE") return; renderSettings(); setScreen("settings"); $("closeSettings").focus({ preventScroll: true }); };
-$("closeSettings").onclick = () => { setScreen("home"); $("openSettings").focus({ preventScroll: true }); };
-$("alarmSwitch").onclick = () => { settings.alarmSafety = !settings.alarmSafety; saveSettings(); renderAlarm(); };
-$("trustSwitch").onclick = () => { settings.trustedOn = !settings.trustedOn; saveSettings(); renderTrust(); };
+/* ---------- Search-as-you-type filter for one Settings list ---------- */
+// Filters the existing list in place (ranked with CSS `order`), so selection, removal and
+// radio semantics keep working. Never shown on Home. Only appears when a list is long enough.
+function createFilter(cfg) {
+  const box = $(cfg.box), input = $(cfg.input), list = $(cfg.list), empty = $(cfg.empty);
+  let announceT = 0;
+  const rows = () => Array.from(list.children).filter(n => n.dataset && n.dataset.sid);
+  const visible = () => rows().filter(r => !r.hidden && r.dataset.want !== "hidden")
+    .sort((a, b) => (+a.style.order || 0) - (+b.style.order || 0));
+  const active = () => !box.hidden && !!input.value.trim();
+
+  function show(r) {
+    const wasLeaving = r.dataset.want === "hidden";
+    r.dataset.want = "shown";
+    if (wasLeaving && r.getAnimations) r.getAnimations().forEach(x => x.cancel());
+    if (!r.hidden) return;
+    r.hidden = false;
+    enterItem(r);
+  }
+  function hide(r) {
+    if (r.hidden || r.dataset.want === "hidden") return;
+    r.dataset.want = "hidden";
+    if (!motionOK()) { r.hidden = true; return; }
+    const a = r.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateX(14px)" }], { duration: 180, easing: EASE });
+    a.onfinish = () => { if (r.dataset.want === "hidden") r.hidden = true; };
+  }
+  function renderEmpty(q) {
+    empty.textContent = "";
+    let s = null;
+    try { s = searcher.suggest({ collection: cfg.collection, query: q }); } catch (e) { s = null; }
+    if (s) {
+      const btn = el("button", { class: "dym", type: "button", text: s.text, onclick: () => { input.value = s.text; apply(); input.focus(); } });
+      empty.append(el("p", { text: `No ${cfg.plural} found for “${q.trim()}”.` }), el("p", {}, [document.createTextNode("Did you mean "), btn, document.createTextNode("?")]));
+    } else {
+      empty.append(el("b", { text: `No matching ${cfg.plural}` }), el("p", { text: "Try a different name." }));
+    }
+  }
+  function announce(msg) {
+    // Wait for a pause in typing so the screen reader isn't interrupted on every keystroke.
+    clearTimeout(announceT);
+    announceT = setTimeout(() => say(msg), 900);
+  }
+  function apply() {
+    const all = rows();
+    if (!searcher || !active()) {
+      all.forEach(r => { r.style.order = ""; show(r); });
+      empty.hidden = true; clearTimeout(announceT);
+      return;
+    }
+    let res = [];
+    try { res = searcher.search({ collection: cfg.collection, query: input.value, limit: 200 }); } catch (e) { res = []; }
+    const rank = new Map(res.map((r, i) => [r.item.id, i]));
+    let shown = 0;
+    all.forEach(r => {
+      const i = rank.get(r.dataset.sid);
+      if (i == null) hide(r); else { r.style.order = String(i); show(r); shown++; }
+    });
+    empty.hidden = shown > 0;
+    if (!shown) renderEmpty(input.value);
+    announce(shown ? `${shown} matching ${shown === 1 ? cfg.singular : cfg.plural}.` : `No matching ${cfg.plural}.`);
+  }
+  function focusRow(r) { (r.matches(cfg.focusSel) ? r : r.querySelector(cfg.focusSel) || r).focus({ preventScroll: false }); }
+
+  input.addEventListener("input", apply);
+  input.addEventListener("keydown", e => {
+    if (e.key === "ArrowDown") { const f = visible()[0]; if (f) { e.preventDefault(); focusRow(f); } }
+    else if (e.key === "Enter") { e.preventDefault(); const f = visible()[0]; if (f && active()) cfg.select(f); }
+    else if (e.key === "Escape" && input.value) { e.preventDefault(); e.stopPropagation(); input.value = ""; apply(); say(`Search cleared.`); }
+  });
+  list.addEventListener("keydown", e => {
+    if (box.hidden) return;
+    const vis = visible(), cur = vis.findIndex(r => r.contains(document.activeElement));
+    if (cur === -1) return;
+    if (e.key === "ArrowDown") { e.preventDefault(); focusRow(vis[Math.min(vis.length - 1, cur + 1)]); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); if (cur === 0) input.focus(); else focusRow(vis[cur - 1]); }
+    else if (e.key === "Enter" && cfg.enterOnRow && document.activeElement === vis[cur]) { e.preventDefault(); cfg.select(vis[cur]); }
+    else if (e.key === "Escape" && active()) { e.preventDefault(); e.stopPropagation(); input.focus(); }
+  });
+  return {
+    // Show the search box only when it helps; hiding it clears the filter.
+    sync(count) {
+      const need = !!searcher && count >= cfg.threshold;
+      box.hidden = !need;
+      if (!need && input.value) input.value = "";
+      apply();
+    },
+    apply,
+  };
+}
+// Browsing is easier for short lists: sounds and atmospheres get search only past 12 options.
+// Trusted Contacts get search as soon as one exists (as specified).
+const soundFilter = createFilter({ collection: "sounds", box: "soundSearch", input: "soundQuery", list: "soundList", empty: "soundEmpty",
+  singular: "sound", plural: "sounds", threshold: 13, focusSel: ".choice", select: r => { const b = r.matches(".choice") ? r : r.querySelector(".choice"); tapSound(b.dataset.id, true); b.focus(); } });
+const sceneFilter = createFilter({ collection: "scenes", box: "sceneSearch", input: "sceneQuery", list: "sceneList", empty: "sceneEmpty",
+  singular: "atmosphere", plural: "atmospheres", threshold: 13, focusSel: ".scene-opt", select: r => { const b = r.matches(".scene-opt") ? r : r.querySelector(".scene-opt"); b.click(); b.focus(); } });
+// Selecting a contact result moves focus to that contact's actions (its Remove button).
+const contactFilter = createFilter({ collection: "trustedContacts", box: "contactSearch", input: "contactQuery", list: "contactList", empty: "contactEmpty",
+  singular: "contact", plural: "contacts", threshold: 1, focusSel: ".contact", enterOnRow: true, select: r => { const b = r.querySelector(".rm"); (b || r).focus(); } });
+
+// Polite screen-reader announcements for important state changes.
+let sayT = 0;
+function say(msg) {
+  const n = $("liveMsg"); clearTimeout(sayT);
+  n.textContent = "";
+  sayT = setTimeout(() => { n.textContent = msg; }, 40);
+}
+
+$("openSettings").onclick = () => { if (state !== "IDLE") return; renderSettings(); showAtmosphere(settings.scene, false); setScreen("settings"); $("closeSettings").focus({ preventScroll: true }); };
+// Leaving Settings stops any preview at once (a 30 ms fade only to avoid a click).
+$("closeSettings").onclick = () => { releaseSound(0.03); setScreen("home"); $("openSettings").focus({ preventScroll: true }); };
+$("alarmSwitch").onclick = () => { settings.alarmSafety = !settings.alarmSafety; saveSettings(); renderAlarm(); say("Alarm Safety " + (settings.alarmSafety ? "on." : "off.")); };
+$("trustSwitch").onclick = () => { settings.trustedOn = !settings.trustedOn; saveSettings(); renderTrust(); say("Trusted Contacts " + (settings.trustedOn ? "on." : "off.")); };
 $("reviewPerm").onclick = showPermSheet;
 $("donateBtn").onclick = () => {
   if (DONATION_LINK) return; // real link opens in the phone's browser once provided
@@ -1592,6 +2292,7 @@ $("contactForm").addEventListener("submit", e => {
   const err = addContact(name, $("cNum").value);
   if (err) { toast(err); return; }
   saveSettings(); renderContacts(); renderTrust();
+  toast("Added " + name.slice(0, 40));
   $("cName").value = ""; $("cNum").value = ""; $("cName").focus();
 });
 // Contact Picker API: returns only the contacts the person chooses (Android Chrome, top-level pages).
