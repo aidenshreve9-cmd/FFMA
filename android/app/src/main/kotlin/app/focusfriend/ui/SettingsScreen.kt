@@ -271,17 +271,40 @@ class SettingsScreen(private val c: Context, private val host: SettingsHost) : F
 
         fun apply() {
             val q = field.edit.text.toString()
-            container.removeAllViews()
             if (q.isBlank() || field.visibility != View.VISIBLE) {
-                rows.values.forEach { add(it) }
+                show(rows.values.toList())
                 empty.visibility = View.GONE; handler.removeCallbacks(speak); return
             }
             val results = host.search.search(collection, q, 200)
-            results.forEach { r -> rows[r.item.id]?.let { add(it); enter(it) } }
+            show(results.mapNotNull { rows[it.item.id] })
             if (results.isEmpty()) showEmpty(q) else empty.visibility = View.GONE
             pending = if (results.isNotEmpty()) "${results.size} matching ${if (results.size == 1) singular else plural}." else "No matching $plural."
             // Wait for a pause in typing so the screen reader isn't interrupted on every keystroke.
             handler.removeCallbacks(speak); handler.postDelayed(speak, 900)
+        }
+
+        /**
+         * Shows exactly [wanted], in order. Rows that drop out slide away; rows that appear fade in.
+         * With reduced motion every change is immediate.
+         */
+        private fun show(wanted: List<View>) {
+            val keep = wanted.toSet()
+            for (i in container.childCount - 1 downTo 0) {
+                val v = container.getChildAt(i)
+                if (v in keep) continue
+                if (Motion.enabled && v.getTag(TAG_LEAVING) == null) {
+                    v.setTag(TAG_LEAVING, true)
+                    v.animate().alpha(0f).translationX(dp(14f)).setDuration(180).withEndAction {
+                        if (v.getTag(TAG_LEAVING) == true) { container.removeView(v); v.setTag(TAG_LEAVING, null); v.alpha = 1f; v.translationX = 0f }
+                    }.start()
+                } else if (!Motion.enabled) container.removeView(v)
+            }
+            wanted.forEach { v ->
+                val wasShown = v.parent === container && v.getTag(TAG_LEAVING) == null
+                if (v.getTag(TAG_LEAVING) != null) { v.animate().cancel(); v.setTag(TAG_LEAVING, null); v.alpha = 1f; v.translationX = 0f }
+                add(v)                                   // re-append in rank order
+                if (!wasShown) enter(v)
+            }
         }
 
         private fun add(v: View) {
@@ -337,7 +360,7 @@ class SettingsScreen(private val c: Context, private val host: SettingsHost) : F
             addView(radio, LinearLayout.LayoutParams(dpi(20f), dpi(20f)))
             addView(label(c, name, 15f, Palette.TEXT, Fonts.sans(c, 500)).also { ellipsize(it) }, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dpi(14f) })
             addView(label(c, kind, 10.5f, Palette.FAINT, Fonts.mono(c)).apply { letterSpacing = .06f })
-            if (onRemove != null) addView(removeButton(c, name, onRemove), LinearLayout.LayoutParams(dpi(48f), dpi(48f)))
+            if (onRemove != null) addView(removeButton(c, name) { slideOutThen(this, onRemove) }, LinearLayout.LayoutParams(dpi(48f), dpi(48f)))
             contentDescription = name
             accessibilityDelegate = RadioRole
         }
@@ -377,7 +400,7 @@ class SettingsScreen(private val c: Context, private val host: SettingsHost) : F
                 background = android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(0, 0xCC000000.toInt()))
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             }, LayoutParams(-1, -2, Gravity.BOTTOM))
-            if (onRemove != null) addView(removeButton(c, name, onRemove).apply { background = GlassDrawable(c, 999f, prism = false) },
+            if (onRemove != null) addView(removeButton(c, name) { slideOutThen(this, onRemove) }.apply { background = GlassDrawable(c, 999f, prism = false) },
                 LayoutParams(dpi(40f), dpi(40f), Gravity.TOP or Gravity.START))
             setOnClickListener { onSelect() }
         }
@@ -395,10 +418,12 @@ class SettingsScreen(private val c: Context, private val host: SettingsHost) : F
             addView(label(c, ct.name, 15f, Palette.TEXT, Fonts.sans(c, 600)).also { ellipsize(it) })
             addView(label(c, ct.number, 12.5f, Palette.MUTED, Fonts.mono(c)))     // the person's own formatting
         }, LinearLayout.LayoutParams(0, -2, 1f))
-        addView(removeButton(c, ct.name) {
-            // Removed items slide out.
-            if (Motion.enabled) animate().alpha(0f).translationX(dp(18f)).setDuration(300).withEndAction(onRemove).start() else onRemove()
-        }, LinearLayout.LayoutParams(dpi(48f), dpi(48f)))
+        addView(removeButton(c, ct.name) { slideOutThen(this, onRemove) }, LinearLayout.LayoutParams(dpi(48f), dpi(48f)))
+    }
+
+    /** Removed items slide out (immediate with reduced motion), then the change is applied. */
+    private fun slideOutThen(v: View, action: () -> Unit) {
+        if (Motion.enabled) v.animate().alpha(0f).translationX(dp(18f)).setDuration(300).withEndAction(action).start() else action()
     }
 
     private fun removeButton(c: Context, name: String, onRemove: () -> Unit) = TextView(c).apply {
@@ -409,6 +434,7 @@ class SettingsScreen(private val c: Context, private val host: SettingsHost) : F
 
     companion object {
         private val TAG_SELECTABLE = "selectable".hashCode()
+        private val TAG_LEAVING = "leaving".hashCode()
     }
 }
 
