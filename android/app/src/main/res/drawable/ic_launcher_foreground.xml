@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Focus orb: a glowing core inside a dial ring, in the app's rose-to-violet colours. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:pathData="M54,54m-24,0a24,24 0,1 1,48 0a24,24 0,1 1,-48 0">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="50"
+                android:centerY="48"
+                android:gradientRadius="26"
+                android:startColor="#FFFFFFFF"
+                android:centerColor="#FFD900FF"
+                android:endColor="#FF1E005B" />
+        </aapt:attr>
+    </path>
+    <path
+        android:pathData="M54,54m-29,0a29,29 0,1 1,58 0a29,29 0,1 1,-58 0"
+        android:strokeWidth="2"
+        android:fillColor="#00000000">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="linear"
+                android:startX="25"
+                android:startY="25"
+                android:endX="83"
+                android:endY="83"
+                android:startColor="#FFF72585"
+                android:endColor="#FF8A2BE2" />
+        </aapt:attr>
+    </path>
+</vector>

@@ -203,6 +203,7 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
 
 .perm{display:flex;align-items:center;gap:12px}
 .pill{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:5px 10px;border-radius:999px;white-space:nowrap}
+.pill{background:rgba(224,195,252,.1);color:var(--halo);box-shadow:inset 0 0 0 1px var(--glass-line)}
 .pill.no{background:rgba(255,84,0,.12);color:var(--warn);box-shadow:inset 0 0 0 1px rgba(255,84,0,.3)}
 .perm .txt{flex:1;font-size:14px;font-weight:500}
 .link-btn{background:none;border:0;color:var(--rose);cursor:pointer;font-weight:600;min-height:44px;padding:0 4px;text-shadow:0 0 10px rgba(247,37,133,.4)}
@@ -240,6 +241,8 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
 .dym{background:none;border:0;padding:0;color:var(--halo);font:inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer;min-height:24px}
 .contact[tabindex]:focus-visible{outline:2px solid var(--halo);outline-offset:2px;border-radius:10px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* The same page runs in a browser and inside the Android app, which says what it can really do. */
+#app:not(.android) .android-only,#app.android .web-only{display:none!important}
 
 @media (prefers-reduced-motion: reduce){
   .dial .ticks,.dial .breath{animation:none}
@@ -345,7 +348,8 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
           <div class="card glass prism toggle-row">
             <div class="txt">
               <b>Trusted Contacts — <span id="trustState">OFF</span></b>
-              <p>When on, these people can call and message you during Focus in the Android app. The browser preview can't let calls or messages through.</p>
+              <p class="web-only">When on, these people can call and message you during Focus in the Android app. The browser preview can't let calls or messages through.</p>
+              <p class="android-only">Android's Do Not Disturb can't let through only the people on this list yet, so this version of the app can't let their calls or messages through. Your list is saved for when it can.</p>
             </div>
             <button class="switch" id="trustSwitch" role="switch" aria-checked="false" aria-label="Trusted Contacts"><span class="st">Trusted Contacts</span></button>
           </div>
@@ -373,7 +377,8 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
           </div>
           <button class="switch" id="alarmSwitch" role="switch" aria-checked="true" aria-label="Alarm Safety"><span class="st">Alarm Safety</span></button>
         </div>
-        <p class="note">The browser preview can't change how your phone handles alarms, so real alarm pass-through isn't available here. It works in the Android app.</p>
+        <p class="note web-only">The browser preview can't change how your phone handles alarms, so real alarm pass-through isn't available here. It works in the Android app.</p>
+        <p class="note android-only">When on, alarms ring during Focus. When off, Do Not Disturb silences them too.</p>
       </div>
 
       <div class="set-sec">
@@ -383,7 +388,8 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
           <span class="txt">Do Not Disturb access</span>
           <button class="link-btn" id="reviewPerm">Review</button>
         </div>
-        <p class="note">This browser version can't silence your phone. The Android app asks for Do Not Disturb access to do that.</p>
+        <p class="note web-only">This browser version can't silence your phone. The Android app asks for Do Not Disturb access to do that.</p>
+        <p class="note android-only">Focus Friend turns on Do Not Disturb for each session and puts your phone back the way it was when the session ends.</p>
       </div>
 
       <button class="donate" id="donateBtn">Buy me a coffee</button>
@@ -401,7 +407,8 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
       <ul><li><b>Emergency alerts.</b></li><li><b>Repeat callers:</b> the first call is silenced. If the same person calls again within 15 minutes, that second call rings.</li></ul>
       <h3>Only when turned on in Settings</h3>
       <ul id="permOptional"></ul>
-      <div class="callout">You're using the browser preview. A browser can't silence notifications or calls, so nothing is blocked here.</div>
+      <div class="callout web-only">You're using the browser preview. A browser can't silence notifications or calls, so nothing is blocked here.</div>
+      <p class="android-only">Android will open its Do Not Disturb access page. Turn on Focus Friend there, then come back.</p>
       <div class="actions">
         <button class="btn primary wide" id="permAllow">Continue in preview</button>
         <button class="btn quiet wide" id="permDeny">Not now</button>
@@ -1244,15 +1251,24 @@ function interruptionPolicy() {
     trustedContacts: settings.trustedOn ? settings.contacts.map(c => c.number) : [],
   };
 }
-// Platform adapter. A web page has no access to Do Not Disturb or incoming calls,
-// so this browser adapter reports honestly that nothing is being blocked.
-const distraction = {
+// Platform adapter. Inside the Android app, window.FFAndroid (MainActivity's bridge) turns on
+// Do Not Disturb. A web page has no access to Do Not Disturb or incoming calls, so the browser
+// adapter reports honestly that nothing is being blocked.
+const native = window.FFAndroid || null;
+const distraction = native ? {
+  platform: "android",
+  checkPermissionState: () => { try { return native.dndState() === "granted" ? "granted" : "not-asked"; } catch (e) { return "not-asked"; } },
+  beginDistractionReduction: policy => { try { return native.begin(JSON.stringify(policy), session ? session.endAt : 0); } catch (e) { return false; } },
+  endDistractionReduction: () => { try { native.end(); } catch (e) {} },
+  restorePreviousSystemState: () => { try { native.end(); } catch (e) {} },
+} : {
   platform: "browser-preview",
   checkPermissionState: () => (settings.previewAck ? "preview" : "not-asked"),
   beginDistractionReduction: policy => false,
   endDistractionReduction: () => {},
   restorePreviousSystemState: () => {},
 };
+if (native) $("app").classList.add("android");
 
 function renderPermOptional() {
   const ul = $("permOptional"); ul.textContent = "";
@@ -1264,7 +1280,8 @@ function renderPermOptional() {
     li.append(b, tag, document.createTextNode(" — " + detail));
     ul.appendChild(li);
   };
-  row("Trusted Contacts", settings.trustedOn, n ? `${n} ${n === 1 ? "person" : "people"} can call and message you.` : "no one added yet.");
+  if (native) row("Trusted Contacts", false, "not available in the Android app yet.");
+  else row("Trusted Contacts", settings.trustedOn, n ? `${n} ${n === 1 ? "person" : "people"} can call and message you.` : "no one added yet.");
   row("Alarm Safety", settings.alarmSafety, "alarms ring during Focus.");
 }
 function showPermSheet() { renderPermOptional(); openModal("permSheet"); }
@@ -1275,12 +1292,30 @@ function requestStart() {
   startSession();
 }
 $("permAllow").onclick = () => {
+  if (native) {
+    // Android shows its own access page; nativeResume() picks up the answer when the app comes back.
+    if (distraction.checkPermissionState() === "granted") { renderPerm(); closeModals(); if (state === "PERMISSION_REQUIRED") startSession(); else state = "IDLE"; return; }
+    awaitingAccess = true;
+    try { native.openDndAccess(); } catch (e) { awaitingAccess = false; toast("Couldn't open Android's settings."); }
+    return;
+  }
   settings.previewAck = true; saveSettings(); renderPerm(); closeModals();
   if (state === "PERMISSION_REQUIRED") startSession(); else state = "IDLE";
 };
 $("permDeny").onclick = () => {
   if (state === "PERMISSION_REQUIRED") { state = "PERMISSION_BARRIER"; openModal("barrier"); }
   else closeModals();
+};
+// Called by the Android app whenever it comes back to the foreground.
+let awaitingAccess = false;
+window.ffNativeResume = () => {
+  renderPerm();
+  if (!awaitingAccess) return;
+  awaitingAccess = false;
+  const ok = distraction.checkPermissionState() === "granted";
+  if (state === "PERMISSION_REQUIRED") {
+    if (ok) startSession(); else { state = "PERMISSION_BARRIER"; openModal("barrier"); }
+  } else if (ok) closeModals();
 };
 $("barReview").onclick = () => { state = "PERMISSION_REQUIRED"; showPermSheet(); };
 $("barBack").onclick = () => { state = "IDLE"; closeModals(); $("focusBtn").focus(); };
@@ -1295,7 +1330,7 @@ function startSession() {
   const silenced = distraction.beginDistractionReduction(interruptionPolicy());
   const sl = $("statusLine");
   if (silenced) { sl.textContent = "Notifications silenced · Emergency calls unaffected"; sl.classList.remove("preview"); }
-  else { sl.textContent = "Browser preview · notifications not silenced"; sl.classList.add("preview"); }
+  else { sl.textContent = native ? "Do Not Disturb couldn't turn on · notifications not silenced" : "Browser preview · notifications not silenced"; sl.classList.add("preview"); }
 
   const sceneChoice = resolveScene();
   const soundChoice = resolveSound();
@@ -1378,10 +1413,14 @@ document.addEventListener("visibilitychange", () => {
 /* ================= Wake lock ================= */
 let wakeLock = null;
 async function acquireWakeLock() {
+  if (native) { try { native.keepScreenOn(true); } catch (e) {} return; }
   try { if ("wakeLock" in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => { wakeLock = null; }); } }
   catch (e) { wakeLock = null; }
 }
-function releaseWakeLock() { try { wakeLock && wakeLock.release(); } catch (e) {} wakeLock = null; }
+function releaseWakeLock() {
+  if (native) { try { native.keepScreenOn(false); } catch (e) {} return; }
+  try { wakeLock && wakeLock.release(); } catch (e) {} wakeLock = null;
+}
 
 /* ================= Audio: eight noise colours ================= */
 let ac = null;
@@ -2157,13 +2196,18 @@ function renderTrust() {
   renderToggle($("trustSwitch"), $("trustState"), settings.trustedOn);
   $("contactCard").classList.toggle("dim", !settings.trustedOn);
   const n = settings.contacts.length;
-  $("trustNote").textContent = settings.trustedOn
+  $("trustNote").textContent = native ? "Stored only on this device."
+    : settings.trustedOn
     ? (n ? `On: ${n} ${n === 1 ? "person" : "people"} can reach you during Focus in the Android app. Stored only on this device.`
          : "On, but no one is added yet. Stored only on this device.")
     : "The Trusted Contacts list is off. During Focus, only emergency alerts and repeat callers get through. Stored only on this device.";
 }
 function renderAlarm() { renderToggle($("alarmSwitch"), $("alarmState"), settings.alarmSafety); }
-function renderPerm() { $("permPill").textContent = settings.previewAck ? "Preview only" : "Not set up"; }
+function renderPerm() {
+  const p = $("permPill");
+  if (native) { const ok = distraction.checkPermissionState() === "granted"; p.textContent = ok ? "Allowed" : "Not set up"; p.classList.toggle("no", !ok); $("permAllow").textContent = ok ? "Continue" : "Allow in Settings"; return; }
+  p.textContent = settings.previewAck ? "Preview only" : "Not set up";
+}
 function renderSettings() { renderSound(); renderScenes(); renderContacts(); renderTrust(); renderAlarm(); renderPerm(); }
 
 /* ---------- Search-as-you-type filter for one Settings list ---------- */
@@ -2365,6 +2409,16 @@ document.addEventListener("keydown", e => {
   else if (isOpen("donateSheet")) $("donClose").click();
   else if (visibleScreen === "settings") $("closeSettings").click();
 });
+// Android back button: returns true when the page handled it (closed a sheet or went back a screen).
+window.ffBack = () => {
+  if (isOpen("confirmEnd")) { $("keepBtn").click(); return true; }
+  if (isOpen("barrier")) { $("barBack").click(); return true; }
+  if (isOpen("permSheet")) { $("permDeny").click(); return true; }
+  if (isOpen("donateSheet")) { $("donClose").click(); return true; }
+  if (visibleScreen === "settings") { $("closeSettings").click(); return true; }
+  if (visibleScreen === "done") { $("doneBtn").click(); return true; }
+  return false; // Home, or a running session: the app goes to the background and Focus keeps going
+};
 window.addEventListener("pagehide", () => { if (session && !session.finished) { distraction.restorePreviousSystemState(); } });
 
 resetDuration();
