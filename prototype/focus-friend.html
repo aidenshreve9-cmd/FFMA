@@ -1,4 +1,4 @@
-<title>Focus Friend Version 3.0</title>
+<title>Focus Friend Version 3.1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap">
@@ -73,7 +73,6 @@ button{font:inherit;color:inherit}
 .dial{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .dial .outer{stroke:rgba(224,195,252,.16)}
 .dial .inner{stroke:rgba(224,195,252,.09)}
-.dial .ticks{transform-origin:100px 100px;animation:spin 240s linear infinite}
 .dial .ticks line{stroke:rgba(224,195,252,.30)}
 .dial .ticks line.major{stroke:rgba(224,195,252,.7)}
 .dial .track{stroke:rgba(42,8,92,.85)}
@@ -82,11 +81,15 @@ button{font:inherit;color:inherit}
 .dial .breath{stroke:var(--magenta);animation:breath 9s ease-in-out infinite}
 .dial .num{fill:rgba(224,195,252,.5);font-family:var(--mono);font-size:7px;letter-spacing:.05em;transition:fill .4s}
 .dial .num.on{fill:var(--halo)}
+.dial .handle{fill:var(--core);opacity:0;transition:opacity .4s,r .3s var(--ease)}
+.dial .handle-ring{fill:none;stroke:rgba(247,37,133,.75);stroke-width:.8;opacity:0;transition:opacity .4s}
+#homeDial .handle,#homeDial .handle-ring{opacity:1}
+.dial-btn.dragging .dial .arc,.dial-btn.dragging .dial .node{transition:none}
+.dial-btn.dragging .dial .handle{r:6.2}
 .core-text{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;text-shadow:0 0 14px rgba(224,195,252,.55),0 1px 10px rgba(0,0,0,.6)}
 .ripples{position:absolute;inset:0;pointer-events:none}
 .ripple{position:absolute;left:50%;top:50%;width:62%;height:62%;margin:-31% 0 0 -31%;border-radius:50%;
   box-shadow:0 0 0 1px rgba(247,37,133,.55),0 0 24px 2px rgba(217,0,255,.35),inset 0 0 24px rgba(247,37,133,.25)}
-@keyframes spin{to{transform:rotate(360deg)}}
 @keyframes breath{0%,100%{opacity:.22}50%{opacity:.75}}
 
 /* ---------- Start ---------- */
@@ -103,9 +106,7 @@ button{font:inherit;color:inherit}
 /* ---------- Home ---------- */
 .home-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px;margin-top:-24px}
 .home-center .label{font-family:var(--serif);font-size:40px;font-weight:400;color:var(--core);letter-spacing:.01em;line-height:1}
-.carousel{position:relative;width:170px;height:24px;overflow:hidden;
-  -webkit-mask-image:linear-gradient(90deg,transparent,#000 32%,#000 68%,transparent);mask-image:linear-gradient(90deg,transparent,#000 32%,#000 68%,transparent)}
-.carousel span{position:absolute;left:50%;top:0;width:56px;margin-left:-28px;text-align:center;font-family:var(--mono);font-size:17px;line-height:24px;color:var(--core);font-variant-numeric:tabular-nums;will-change:transform,opacity}
+.home-mins{font-family:var(--mono);font-size:30px;font-weight:300;line-height:1;color:var(--core);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
 .unit{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--halo);margin-top:-4px}
 .hint{color:var(--muted);font-size:13.5px;letter-spacing:.02em;transition:opacity .8s var(--ease);margin:0}
 .hint.gone{opacity:0}
@@ -256,7 +257,7 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
 #app:not(.android) .android-only,#app.android .web-only{display:none!important}
 
 @media (prefers-reduced-motion: reduce){
-  .dial .ticks,.dial .breath{animation:none}
+  .dial .breath{animation:none}
   .dial .breath{opacity:.5}
   .dial .arc,.dial .node{transition:none}
 }
@@ -293,11 +294,11 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
         <svg class="dial" id="homeDial" viewBox="0 0 200 200" aria-hidden="true"></svg>
         <span class="core-text" aria-hidden="true">
           <span class="label">Focus</span>
-          <span class="carousel" id="carousel"></span>
+          <span class="home-mins" id="homeMins">15</span>
           <span class="unit">min</span>
         </span>
       </button>
-      <p class="hint" id="hint">Slide the button to change the time</p>
+      <p class="hint" id="hint">Drag around the ring to set the time</p>
       <p class="sr" id="durLive" aria-live="polite"></p>
     </div>
   </section>
@@ -844,11 +845,10 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
 "use strict";
 
 /* ================= Config / decision registry ================= */
-const DURATIONS = [15, 30, 45, 60];            // APPROVED values; cycles 60 → 15 (user-approved change)
-const DEFAULT_INDEX = 0;                       // APPROVED: always opens on 15
-const ITEM_W = 58;                             // px of finger travel per step
-const TAP_SLOP = 7;
-const FLICK_VELOCITY = 0.0035;                 // items per ms (~0.2 px/ms at 58 px per item)                            // px before a touch counts as a slide
+const MIN_MINUTES = 1, MAX_MINUTES = 60;      // V3.1: any whole minute from 1 to 60, set on the ring
+const DEFAULT_MINUTES = 15;                    // APPROVED: always opens on 15
+const RING_INNER = 0.68;                       // touches this far out (share of the dial's radius) set the time
+const TAP_SLOP = 7;                            // px a touch in the middle can move and still count as a tap
 const REPEAT_CALL_WINDOW_MIN = 15;             // Android's repeat-caller window
 const DONATION_LINK = null;                    // NOT APPROVED — no link yet
 const SCENES = [
@@ -1120,17 +1120,20 @@ function buildDial(root, gid) {
 
   svg("circle", { class: "outer", cx: 100, cy: 100, r: 97, fill: "none", "stroke-width": ".6" }, root);
   const ticks = svg("g", { class: "ticks" }, root);
-  for (let i = 0; i < 120; i++) {
-    const a = i / 120 * Math.PI * 2, major = i % 10 === 0, r1 = major ? 88 : 90.5, r2 = 93;
+  // A fixed compass-style scale: one tick per minute, a longer tick every 5.
+  for (let i = 0; i < 60; i++) {
+    const a = i / 60 * Math.PI * 2, major = i % 5 === 0, r1 = major ? 87.5 : 90.5, r2 = 93;
     svg("line", { class: major ? "major" : "", x1: 100 + Math.sin(a) * r1, y1: 100 - Math.cos(a) * r1, x2: 100 + Math.sin(a) * r2, y2: 100 - Math.cos(a) * r2, "stroke-width": major ? ".7" : ".35" }, ticks);
   }
   svg("circle", { class: "track", cx: 100, cy: 100, r: ARC_R, fill: "none", "stroke-width": "2.2" }, root);
   const arc = svg("circle", { class: "arc", cx: 100, cy: 100, r: ARC_R, fill: "none", "stroke-width": "2.6", "stroke-linecap": "round",
     stroke: `url(#${gid})`, filter: `url(#${gid}G)`, transform: "rotate(-90 100 100)", "stroke-dasharray": ARC_C, "stroke-dashoffset": ARC_C }, root);
   const node = svg("circle", { class: "node", r: 2.2, cx: 100, cy: 100 - ARC_R, filter: `url(#${gid}G)` }, root);
+  const handleRing = svg("circle", { class: "handle-ring", r: 7.5, cx: 100, cy: 100 - ARC_R }, root);
+  const handle = svg("circle", { class: "handle", r: 4.4, cx: 100, cy: 100 - ARC_R, filter: `url(#${gid}G)` }, root);
   svg("circle", { class: "inner", cx: 100, cy: 100, r: 77, fill: "none", "stroke-width": ".5" }, root);
   svg("circle", { class: "breath", cx: 100, cy: 100, r: 66, fill: "none", "stroke-width": "1.1", filter: `url(#${gid}G)` }, root);
-  const nums = DURATIONS.map(mn => {
+  const nums = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60].map(mn => {
     const a = mn / 60 * Math.PI * 2, r = 72.5;
     const t = svg("text", { class: "num", x: 100 + Math.sin(a) * r, y: 100 - Math.cos(a) * r + 2.4, "text-anchor": "middle" }, root);
     t.textContent = mn; return t;
@@ -1142,84 +1145,72 @@ function buildDial(root, gid) {
       const a = frac * Math.PI * 2;
       node.setAttribute("cx", 100 + Math.sin(a) * ARC_R); node.setAttribute("cy", 100 - Math.cos(a) * ARC_R);
       node.style.opacity = frac > 0.002 ? 1 : 0;
-      nums.forEach((t, i) => t.classList.toggle("on", DURATIONS[i] === activeMinutes));
+      [handle, handleRing].forEach(h => { h.setAttribute("cx", 100 + Math.sin(a) * ARC_R); h.setAttribute("cy", 100 - Math.cos(a) * ARC_R); });
+      nums.forEach(t => t.classList.toggle("on", +t.textContent === activeMinutes));
     },
   };
 }
 const homeDial = buildDial($("homeDial"), "gH");
 const sessionDial = buildDial($("sessionDial"), "gS");
 
-/* ================= Duration carousel (cycles 15 → 30 → 45 → 60 → 15) ================= */
-let durIndex = DEFAULT_INDEX;
-let pos = DEFAULT_INDEX;          // fractional carousel position (unbounded; value = DURATIONS[mod(round(pos))])
-let snapAnim = 0;
-const carousel = $("carousel");
-const slots = Array.from({ length: 5 }, () => carousel.appendChild(document.createElement("span")));
-// Axis rule lives here: only a mostly-horizontal slide changes the time. Vertical does nothing.
-function axisOf(dx, dy) { return Math.abs(dx) > Math.abs(dy) ? "x" : "y"; }
-function renderCarousel(silent) {
-  const base = Math.round(pos);
-  slots.forEach((el, k) => {
-    const i = base + k - 2, x = (i - pos) * ITEM_W, d = Math.min(1, Math.abs(x) / (ITEM_W * 1.7));
-    el.textContent = DURATIONS[mod(i, DURATIONS.length)];
-    el.style.transform = `translateX(${x.toFixed(2)}px) scale(${(1 - d * .28).toFixed(3)})`;
-    el.style.opacity = (1 - d * .85).toFixed(3);
-  });
-  const idx = mod(base, DURATIONS.length);
-  if (idx !== durIndex) { durIndex = idx; renderDuration(!silent); }
+/* ================= Duration dial (V3.1: 1–60 minutes, set on the ring like a compass) ================= */
+let minutes = DEFAULT_MINUTES;
+let durAnnounceT = 0;
+const clampMinutes = m => Math.max(MIN_MINUTES, Math.min(MAX_MINUTES, Math.round(m)));
+// Returns true when the time changed.
+function setMinutes(m) {
+  m = clampMinutes(m);
+  if (m === minutes) return false;
+  minutes = m; renderDuration(true);
+  return true;
 }
 function renderDuration(announce) {
-  const m = DURATIONS[durIndex];
-  $("focusBtn").setAttribute("aria-label", `Focus, ${m} minutes. Slide left or right, or use the arrow keys, to change the time.`);
+  const m = minutes, word = m === 1 ? "minute" : "minutes";
+  $("homeMins").textContent = m;
+  $("focusBtn").setAttribute("aria-label", `Focus, ${m} ${word}. Drag around the ring, or use the arrow keys, to change the time. Press to start.`);
   homeDial.set(m / 60, m);
-  if (announce) $("durLive").textContent = m + " minutes";
+  clearTimeout(durAnnounceT);
+  // Announced once the time settles, not on every minute a drag passes through.
+  if (announce) durAnnounceT = setTimeout(() => { $("durLive").textContent = `${m} ${word}`; }, 450);
 }
-function snapTo(target) {
-  cancelAnimationFrame(snapAnim);
-  const from = pos, dist = target - from;
-  if (!motionOK() || Math.abs(dist) < 1e-3) { pos = target; renderCarousel(); return; }
-  const dur = 380 + Math.min(1, Math.abs(dist)) * 220, t0 = performance.now();
-  const ease = x => 1 - Math.pow(1 - x, 4);
-  const step = now => {
-    const k = Math.min(1, (now - t0) / dur);
-    pos = from + dist * ease(k); renderCarousel();
-    if (k < 1) snapAnim = requestAnimationFrame(step);
-  };
-  snapAnim = requestAnimationFrame(step);
-}
-function resetDuration() { cancelAnimationFrame(snapAnim); pos = DEFAULT_INDEX; durIndex = -1; renderCarousel(true); }
+function resetDuration() { minutes = DEFAULT_MINUTES; renderDuration(false); }
 function hideHint() { $("hint").classList.add("gone"); }
 
 (function bindGesture() {
   const btn = $("focusBtn");
-  let down = false, sx = 0, sy = 0, startPos = 0, axis = null, swallow = false, lx = 0, lt = 0, vel = 0;
+  let down = false, onRing = false, moved = false, swallow = false, sx = 0, sy = 0;
+  // Where a pointer is on the dial: distance from the centre (1 = the dial's edge), and its compass
+  // bearing in degrees (0 at the top, clockwise).
+  function polar(e) {
+    const r = btn.getBoundingClientRect(), dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+    return { d: Math.hypot(dx, dy) / (r.width / 2), deg: (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360 };
+  }
+  // 6° per minute. The top of the ring is 60.
+  const minutesAt = deg => { const m = Math.round(deg / 6); return m === 0 ? 60 : m; };
+  function follow(deg) {
+    let m = minutesAt(deg);
+    // A drag never jumps across the top: pushing past 60 holds at 60, pulling back past 1 holds at 1.
+    if (minutes >= 50 && m <= 10) m = MAX_MINUTES;
+    else if (minutes <= 10 && m >= 50) m = MIN_MINUTES;
+    setMinutes(m);
+  }
   btn.addEventListener("pointerdown", e => {
-    down = true; axis = null; swallow = false; sx = lx = e.clientX; sy = e.clientY; lt = e.timeStamp; vel = 0;
-    cancelAnimationFrame(snapAnim); startPos = pos;
+    down = true; moved = false; swallow = false; sx = e.clientX; sy = e.clientY;
+    const p = polar(e);
+    onRing = p.d >= RING_INNER;
     try { btn.setPointerCapture(e.pointerId); } catch (_) {}
     setActive("home", true);
+    if (onRing) { btn.classList.add("dragging"); setMinutes(minutesAt(p.deg)); hideHint(); } // touching the ring jumps there
   });
   btn.addEventListener("pointermove", e => {
     if (!down) return;
-    const dx = e.clientX - sx, dy = e.clientY - sy;
-    if (!axis && Math.hypot(dx, dy) > TAP_SLOP) axis = axisOf(dx, dy);
-    if (axis === "x") {
-      pos = startPos - dx / ITEM_W;         // slide left → next time, content moves right-to-left
-      const dt = Math.max(1, e.timeStamp - lt); vel = .8 * vel + .2 * (-(e.clientX - lx) / ITEM_W / dt); lx = e.clientX; lt = e.timeStamp;
-      renderCarousel(); hideHint();
-    }
+    if (onRing) follow(polar(e).deg);
+    else if (!moved && Math.hypot(e.clientX - sx, e.clientY - sy) > TAP_SLOP) moved = true;
   });
   const release = () => {
     if (!down) return;
-    down = false; setActive("home", false);
-    if (axis) swallow = true;                // a slide never starts a session
-    if (axis === "x") {
-      const base = Math.round(startPos), dragged = Math.round(pos);
-      // The drag decides; a quick flick that didn't reach the next value moves exactly one step.
-      let target = dragged;
-      if (dragged === base && Math.abs(vel) > FLICK_VELOCITY) target = base + Math.sign(vel);
-      snapTo(target);
-    } else snapTo(Math.round(pos));         // a tap mid-snap still lands on a whole value
+    down = false; setActive("home", false); btn.classList.remove("dragging");
+    if (onRing || moved) swallow = true;     // setting the time, or a stray slide, never starts a session
   };
   btn.addEventListener("pointerup", release);
   btn.addEventListener("pointercancel", () => { release(); swallow = true; });
@@ -1230,8 +1221,9 @@ function hideHint() { $("hint").classList.add("gone"); }
     hideHint(); requestStart();
   });
   btn.addEventListener("keydown", e => {
-    if (e.key === "ArrowRight") { e.preventDefault(); snapTo(Math.round(pos) + 1); hideHint(); }
-    if (e.key === "ArrowLeft")  { e.preventDefault(); snapTo(Math.round(pos) - 1); hideHint(); }
+    const step = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1, PageUp: 5, PageDown: -5 }[e.key];
+    if (step) { e.preventDefault(); setMinutes(minutes + step); hideHint(); }
+    else if (e.key === "Home" || e.key === "End") { e.preventDefault(); setMinutes(e.key === "Home" ? MIN_MINUTES : MAX_MINUTES); hideHint(); }
   });
   const tb = $("timerBtn");
   tb.addEventListener("pointerdown", () => setActive("session", true));
@@ -1347,7 +1339,6 @@ $("barBack").onclick = () => { state = "IDLE"; closeModals(); $("focusBtn").focu
 
 function startSession() {
   closeModals();
-  const minutes = DURATIONS[durIndex];
   const startedAt = Date.now();
   session = { minutes, startedAt, endAt: startedAt + minutes * 60000, finished: false };
   state = "ACTIVE_SESSION";
