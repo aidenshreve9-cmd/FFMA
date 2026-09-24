@@ -11,6 +11,7 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.PixelFormat
 import android.graphics.RadialGradient
+import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
@@ -103,13 +104,19 @@ class GlassDrawable(private val c: Context, private val radiusDp: Float = 20f, p
     private val edge = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = c.dp(1f) }
     private val glow = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = c.dp(6f) }
     private val rect = RectF()
+    private var edgeShader: Shader? = null
+
+    // The inset rectangle and the prism gradient depend only on the bounds, so they're rebuilt only when those change.
+    override fun onBoundsChange(b: Rect) {
+        rect.set(b.left + c.dp(1f), b.top + c.dp(1f), b.right - c.dp(1f), b.bottom - c.dp(1f))
+        edgeShader = if (prism) LinearGradient(rect.left, rect.top, rect.right, rect.bottom, Palette.PRISM_A, Palette.PRISM_B, Shader.TileMode.CLAMP) else null
+    }
 
     override fun draw(canvas: Canvas) {
-        val b = bounds; val r = c.dp(radiusDp)
-        rect.set(b.left + c.dp(1f), b.top + c.dp(1f), b.right - c.dp(1f), b.bottom - c.dp(1f))
+        val r = c.dp(radiusDp)
         canvas.drawRoundRect(rect, r, r, fill)
         if (prism) {
-            val g = LinearGradient(rect.left, rect.top, rect.right, rect.bottom, Palette.PRISM_A, Palette.PRISM_B, Shader.TileMode.CLAMP)
+            val g = edgeShader
             glow.shader = g; glow.alpha = 38
             canvas.drawRoundRect(rect, r, r, glow)
             edge.shader = g
@@ -135,10 +142,14 @@ fun pillButton(c: Context, text: String, primary: Boolean) = Button(c).apply {
     background = object : Drawable() {
         val p = Paint(Paint.ANTI_ALIAS_FLAG)
         val r = RectF()
+        var fillShader: Shader? = null
+        override fun onBoundsChange(b: Rect) {
+            fillShader = if (primary) LinearGradient(b.left.toFloat(), 0f, b.right.toFloat(), 0f, Palette.ROSE, Palette.MAGENTA, Shader.TileMode.CLAMP) else null
+        }
         override fun draw(canvas: Canvas) {
             r.set(bounds); val rad = r.height() / 2
             if (primary) {
-                p.shader = LinearGradient(r.left, 0f, r.right, 0f, Palette.ROSE, Palette.MAGENTA, Shader.TileMode.CLAMP)
+                p.shader = fillShader
                 p.alpha = if (isEnabled) 255 else 100
             } else { p.shader = null; p.color = 0x8C0A0514.toInt() }
             canvas.drawRoundRect(r, rad, rad, p)
@@ -172,6 +183,8 @@ class EmberSwitch(c: Context, private val name: String) : View(c) {
     private val track = Paint(Paint.ANTI_ALIAS_FLAG)
     private val knob = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rect = RectF()
+    private var trackShader: Shader? = null
+    private var trackShaderW = -1
 
     init {
         isFocusable = true; isClickable = true
@@ -195,7 +208,8 @@ class EmberSwitch(c: Context, private val name: String) : View(c) {
     override fun onDraw(canvas: Canvas) {
         val top = (height - dp(32f)) / 2
         rect.set(0f, top, width.toFloat(), top + dp(32f))
-        track.shader = LinearGradient(0f, 0f, width.toFloat(), 0f, Palette.INDIGO_2, Palette.PITCH, Shader.TileMode.CLAMP)
+        if (trackShaderW != width) { trackShader = LinearGradient(0f, 0f, width.toFloat(), 0f, Palette.INDIGO_2, Palette.PITCH, Shader.TileMode.CLAMP); trackShaderW = width }
+        track.shader = trackShader
         canvas.drawRoundRect(rect, rect.height() / 2, rect.height() / 2, track)
         track.shader = null; track.style = Paint.Style.STROKE; track.strokeWidth = dp(1f)
         track.color = if (pos > .5f) Palette.withAlpha(Palette.ROSE, .7f) else Palette.GLASS_LINE

@@ -23,6 +23,11 @@ import kotlin.random.Random
 class Painter {
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val path = Path()
+    /** Scratch objects reused every frame (one painter per view, so never shared across draws). */
+    val rect = RectF()
+    val point = FloatArray(2)
+    private var buffer = FloatArray(0)
+    fun buffer(size: Int) = (if (buffer.size >= size) buffer else FloatArray(size).also { buffer = it })
 
     fun glow(c: Canvas, x: Float, y: Float, r: Float, color: Int, a: Float) {
         if (r <= 0f || a <= 0f) return
@@ -101,6 +106,15 @@ object ScenePainter {
     }
     private val young = List(16) { Particle(rg.nextFloat(), rg.nextFloat() * .7f, .6f + rg.nextFloat() * 1.4f, rg.nextFloat() * 6.28f, 0f, 0) }
 
+    // Fixed layouts, built once rather than on every frame.
+    private val quantumStreaks = listOf(
+        floatArrayOf(.5f, .30f, .38f, .55f, -.5f, 2.4f), floatArrayOf(.22f, .62f, .50f, .45f, .7f, 2.8f), floatArrayOf(.18f, .40f, .66f, .42f, -.2f, 3.0f),
+        floatArrayOf(.35f, .75f, .30f, .5f, .4f, 2.2f), floatArrayOf(.35f, .50f, .80f, .5f, -.8f, 2.6f), floatArrayOf(.10f, .70f, .22f, .3f, .2f, 2.4f),
+    ).zip(listOf(Palette.VIOLET, Palette.MAGENTA, Palette.ROSE, 0xFF1E3AA8.toInt(), Palette.VIOLET_2, Palette.COPPER))
+    private val lensArcs = listOf(Triple(1.55f, .5f, 3f), Triple(1.75f, .25f, 6f), Triple(2.1f, .08f, 10f))
+    private val dustLanes = listOf(floatArrayOf(.22f, .01f, .18f), floatArrayOf(.45f, -.02f, .22f), floatArrayOf(.7f, .015f, .2f), floatArrayOf(.9f, -.01f, .15f))
+    private val pillars = listOf(floatArrayOf(.28f, .16f, .06f, .44f), floatArrayOf(.55f, .22f, .08f, .34f), floatArrayOf(.8f, .14f, .05f, .5f))
+
     fun draw(id: String, c: Canvas, w: Float, h: Float, t: Float, p: Painter, density: Float) {
         when (id) {
             "galaxy" -> galaxy(c, w, h, t, p, density)
@@ -119,10 +133,7 @@ object ScenePainter {
         p.vgrad(c, w, h, Palette.PITCH, 0xFF07021A.toInt(), 0xFF10042C.toInt())
         val m = max(w, h)
         p.additive(true)
-        listOf(
-            floatArrayOf(.5f, .30f, .38f, .55f, -.5f, 2.4f), floatArrayOf(.22f, .62f, .50f, .45f, .7f, 2.8f), floatArrayOf(.18f, .40f, .66f, .42f, -.2f, 3.0f),
-            floatArrayOf(.35f, .75f, .30f, .5f, .4f, 2.2f), floatArrayOf(.35f, .50f, .80f, .5f, -.8f, 2.6f), floatArrayOf(.10f, .70f, .22f, .3f, .2f, 2.4f),
-        ).zip(listOf(Palette.VIOLET, Palette.MAGENTA, Palette.ROSE, 0xFF1E3AA8.toInt(), Palette.VIOLET_2, Palette.COPPER)).forEachIndexed { i, (v, col) ->
+        quantumStreaks.forEachIndexed { i, (v, col) ->
             p.streak(c, w * (v[1] + .05f * sin(t * .02f + i)), h * (v[2] + .04f * cos(t * .017f + i)), m * v[3] * .5f, col, v[0], v[4] + .15f * sin(t * .01f + i), v[5], 1.3f / v[5])
         }
         p.additive(false)
@@ -159,9 +170,10 @@ object ScenePainter {
         part(true)
         val arcP = p.paint
         arcP.style = Paint.Style.STROKE; arcP.strokeCap = Paint.Cap.ROUND
-        for ((rr, a, lw) in listOf(Triple(1.55f, .5f, 3f), Triple(1.75f, .25f, 6f), Triple(2.1f, .08f, 10f))) {
+        for ((rr, a, lw) in lensArcs) {
             arcP.color = Palette.withAlpha(0xFFFF9A5A.toInt(), a); arcP.strokeWidth = lw * d
-            c.drawArc(RectF(cx - r * rr, cy - r * rr * .92f, cx + r * rr, cy + r * rr * .92f), 189f, 162f, false, arcP)
+            p.rect.set(cx - r * rr, cy - r * rr * .92f, cx + r * rr, cy + r * rr * .92f)
+            c.drawArc(p.rect, 189f, 162f, false, arcP)
         }
         arcP.style = Paint.Style.FILL
         p.additive(false)
@@ -205,13 +217,13 @@ object ScenePainter {
         p.vgrad(c, w, h, Palette.PITCH, 0xFF030724.toInt(), 0xFF081138.toInt())
         p.starfield(c, w, h, t, 120, .6f, d)
         val ang = -.62f; val cx = w * .5f; val cy = h * .5f; val len = hypot(w, h); val ca = cos(ang); val sa = sin(ang)
-        fun at(u: Float, v: Float) = floatArrayOf(cx + (u - .5f) * len * ca - v * len * sa, cy + (u - .5f) * len * sa + v * len * ca)
+        fun at(u: Float, v: Float) = p.point.apply { this[0] = cx + (u - .5f) * len * ca - v * len * sa; this[1] = cy + (u - .5f) * len * sa + v * len * ca }
         p.additive(true)
         for (i in 0..8) { val q = at(i / 8f, 0f); p.glow(c, q[0], q[1], len * .2f, if (i % 3 == 1) Palette.VIOLET_2 else 0xFF2A3A9A.toInt(), .28f) }
         val drift = t * .002f
         for (s in band) { val q = at(((s.a + drift) % 1f + 1f) % 1f, s.b); p.fillRect(c, q[0], q[1], s.c * d, s.c * d, Palette.withAlpha(s.color, s.d)) }
         p.additive(false)
-        listOf(floatArrayOf(.22f, .01f, .18f), floatArrayOf(.45f, -.02f, .22f), floatArrayOf(.7f, .015f, .2f), floatArrayOf(.9f, -.01f, .15f)).forEachIndexed { i, v ->
+        dustLanes.forEachIndexed { i, v ->
             val q = at(v[0] + .02f * sin(t * .01f + i), v[1]); p.streak(c, q[0], q[1], len * v[2] * .5f, Palette.PITCH, .75f, ang, 3f, .28f)
         }
     }
@@ -226,7 +238,7 @@ object ScenePainter {
         p.streak(c, w * .7f, h * .22f, m * .3f, Palette.MAGENTA, .22f, .8f, 2.2f, .5f)
         p.glow(c, w * .52f, h * .36f, m * .12f, 0xFFFFE3CC.toInt(), .35f)
         p.additive(false)
-        listOf(floatArrayOf(.28f, .16f, .06f, .44f), floatArrayOf(.55f, .22f, .08f, .34f), floatArrayOf(.8f, .14f, .05f, .5f)).forEachIndexed { i, (x0, wb, wt, top) ->
+        pillars.forEachIndexed { i, (x0, wb, wt, top) ->
             val path = p.pathOf(); path.moveTo(w * (x0 - wb / 2), h)
             var y = h
             while (y >= h * top) { val k = (h - y) / (h * (1 - top)); path.lineTo(w * (x0 - (wb + (wt - wb) * k) / 2) + sin(y * .05f + i) * 4 * d, y); y -= 6f }
@@ -250,19 +262,19 @@ object ScenePainter {
         p.fillRect(c, 0f, 0f, w, h, Palette.PITCH)
         p.additive(true)
         p.glow(c, w * .5f, h * .5f, max(w, h) * .7f, Palette.INDIGO, .5f)
-        fun node(n: Particle) = floatArrayOf((n.a + .012f * sin(t * .03f + n.c)) * w, (n.b + .012f * cos(t * .025f + n.c)) * h)
+        val pos = p.buffer(nodes.size * 2)
+        nodes.forEachIndexed { i, n -> pos[2 * i] = (n.a + .012f * sin(t * .03f + n.c)) * w; pos[2 * i + 1] = (n.b + .012f * cos(t * .025f + n.c)) * h }
         p.paint.strokeWidth = .8f * d
         for ((i, j, ph) in edges) {
-            val a = node(nodes[i]); val b = node(nodes[j])
-            p.paint.style = Paint.Style.STROKE; p.paint.color = Palette.withAlpha(Palette.VIOLET_2, .28f); c.drawLine(a[0], a[1], b[0], b[1], p.paint)
+            val ax = pos[2 * i]; val ay = pos[2 * i + 1]; val bx = pos[2 * j]; val by = pos[2 * j + 1]
+            p.paint.style = Paint.Style.STROKE; p.paint.color = Palette.withAlpha(Palette.VIOLET_2, .28f); c.drawLine(ax, ay, bx, by, p.paint)
             p.paint.style = Paint.Style.FILL
             val k = ((t * .04f + ph) % 1f + 1f) % 1f
-            p.glow(c, a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, 5 * d, Palette.HALO, .5f)
+            p.glow(c, ax + (bx - ax) * k, ay + (by - ay) * k, 5 * d, Palette.HALO, .5f)
         }
-        for (n in nodes) {
-            val q = node(n)
-            p.glow(c, q[0], q[1], (12 + n.d * 12) * d, Palette.MAGENTA, .22f + .08f * sin(t * .3f + n.c))
-            p.paint.color = Palette.withAlpha(0xFFFFF0FF.toInt(), .85f); c.drawCircle(q[0], q[1], n.d * d, p.paint)
+        nodes.forEachIndexed { i, n ->
+            p.glow(c, pos[2 * i], pos[2 * i + 1], (12 + n.d * 12) * d, Palette.MAGENTA, .22f + .08f * sin(t * .3f + n.c))
+            p.paint.color = Palette.withAlpha(0xFFFFF0FF.toInt(), .85f); c.drawCircle(pos[2 * i], pos[2 * i + 1], n.d * d, p.paint)
         }
         p.additive(false)
         p.starfield(c, w, h, t, 60, .4f, d)
@@ -318,8 +330,7 @@ class NebulaView(c: Context) : AmbientView(c) {
         val voidAmt = ((1 - L) / .6f).coerceIn(0f, 1f)
         if (voidAmt > 0) p.glow(canvas, cx, cy, min(w, h) * .75f, Palette.PITCH, .95f * voidAmt)
         val ring = p.paint
-        for ((rx, k, a, speed, ph, col) in listOf(
-            Orbit(.62f, .34f, .13f, .05f, .4f, Palette.COPPER), Orbit(.86f, .30f, .09f, -.032f, 2.1f, Palette.HALO), Orbit(1.12f, .28f, .07f, .021f, 4.0f, Palette.ROSE))) {
+        for ((rx, k, a, speed, ph, col) in orbits) {
             canvas.save(); canvas.translate(cx, cy); canvas.rotate(-18.3f)
             ring.style = Paint.Style.STROKE; ring.strokeWidth = .6f * d; ring.shader = null; ring.color = Palette.withAlpha(Palette.HALO, a * (.5f + .5f * L))
             canvas.drawOval(-w * rx, -w * rx * k, w * rx, w * rx * k, ring); ring.style = Paint.Style.FILL
@@ -336,6 +347,8 @@ class NebulaView(c: Context) : AmbientView(c) {
         }
     }
     private data class Orbit(val rx: Float, val k: Float, val a: Float, val speed: Float, val ph: Float, val col: Int)
+    private val orbits = listOf(
+        Orbit(.62f, .34f, .13f, .05f, .4f, Palette.COPPER), Orbit(.86f, .30f, .09f, -.032f, 2.1f, Palette.HALO), Orbit(1.12f, .28f, .07f, .021f, 4.0f, Palette.ROSE))
 }
 
 /** Full-screen atmosphere (behind the session timer and Settings): a built-in scene or the person's picture. */
@@ -346,6 +359,8 @@ class SceneView(c: Context) : AmbientView(c) {
     private var sceneId = "quantum"
     private var picture: Bitmap? = null
     private val src = Rect(); private val dst = RectF()
+    private var dim: Shader? = null
+    private var dimW = 0f; private var dimH = 0f
 
     fun show(id: String, bitmap: Bitmap?) { sceneId = id; picture = bitmap; invalidate() }
 
@@ -360,7 +375,11 @@ class SceneView(c: Context) : AmbientView(c) {
         } else ScenePainter.draw(sceneId, canvas, w, h, time, p, resources.displayMetrics.density)
         if (!dimmed) return
         // Dim toward the edges so the timer stays readable.
-        p.paint.shader = RadialGradient(w / 2, h * .46f, max(w, h) * .8f, intArrayOf(0x1A000000, 0x1A000000, 0xA8000000.toInt()), floatArrayOf(0f, .2f, 1f), Shader.TileMode.CLAMP)
+        if (dim == null || w != dimW || h != dimH) {
+            dim = RadialGradient(w / 2, h * .46f, max(w, h) * .8f, intArrayOf(0x1A000000, 0x1A000000, 0xA8000000.toInt()), floatArrayOf(0f, .2f, 1f), Shader.TileMode.CLAMP)
+            dimW = w; dimH = h
+        }
+        p.paint.shader = dim
         canvas.drawRect(0f, 0f, w, h, p.paint); p.paint.shader = null
     }
 }

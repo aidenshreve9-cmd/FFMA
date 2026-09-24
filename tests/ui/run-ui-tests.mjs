@@ -412,6 +412,54 @@ await test("persistence: choices saved, duration never saved", async () => {
   await ctx.close();
 });
 
+/* ================= Random and your own pictures ================= */
+const SOUND_NAMES = ["White Noise", "Pink Noise", "Brown Noise", "Green Noise", "Grey Noise", "Blue Noise", "Violet Noise", "Black Noise"];
+const SCENE_NAMES = ["Quantum Nebula", "Spiral Galaxy", "Event Horizon", "Aurora Veil", "Cosmic Dust", "Stellar Nursery", "Dark Matter Web", "Ethereal Void"];
+await test("random: Random sound and atmosphere each resolve to a real choice for the session", async () => {
+  const { page, ctx, errors } = await open({ settings: { v: 1, audio: "random", scene: "random", alarmSafety: true, trustedOn: false, contacts: [], previewAck: true } });
+  await click(page, "#focusBtn"); await page.waitForTimeout(1000);
+  eq(await hidden(page, "session"), false, "session running");
+  const [snd, scn] = (await text(page, "#sessionFoot")).split(" · ");
+  assert(SOUND_NAMES.includes(snd), "sound is a built-in: " + snd);
+  assert(SCENE_NAMES.includes(scn), "atmosphere is a built-in: " + scn);
+  eq(errors, []);
+  await ctx.close();
+});
+
+// 1×1 PNG
+const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
+await test("pictures: wrong type refused; an added picture is chosen, kept after reload, used in Focus; removal falls back", async () => {
+  const { page, ctx, errors } = await open();
+  await openSettings(page);
+  await page.setInputFiles("#picFile", { name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("hi") });
+  await page.waitForTimeout(150);
+  eq(await text(page, "#toast"), "That file isn't a picture.");
+  await page.setInputFiles("#picFile", { name: "lake_view.png", mimeType: "image/png", buffer: PNG });
+  await page.waitForTimeout(700);
+  eq(await text(page, "#toast"), "Added lake_view");
+  const id = await page.evaluate(() => JSON.parse(localStorage.getItem("ff.settings.v1")).scene);
+  assert(id.startsWith("img:"), "the new picture is selected");
+  const tile = i => page.evaluate(i => { const b = document.querySelector(`#sceneList .scene-opt[data-id="${i}"]`); return b && b.getAttribute("aria-checked"); }, i);
+  eq(await tile(id), "true", "its tile is checked");
+  await page.reload(); await page.waitForTimeout(700);
+  await openSettings(page);
+  eq(await tile(id), "true", "kept (and still chosen) after reload");
+  await click(page, "#closeSettings"); await page.waitForTimeout(800);
+  await click(page, "#focusBtn"); await page.waitForTimeout(600);
+  await click(page, "#permAllow"); await page.waitForTimeout(1000);
+  eq(await text(page, "#sessionFoot"), "White Noise · lake_view", "Focus uses the picture");
+  await click(page, "#timerBtn"); await page.waitForTimeout(500);
+  await click(page, "#endBtn"); await page.waitForTimeout(900);
+  await click(page, "#doneBtn"); await page.waitForTimeout(900);
+  await openSettings(page);
+  await click(page, `#sceneList [data-sid="${id}"] .x`); await page.waitForTimeout(800);
+  eq(await tile(id), null, "tile removed");
+  eq(await page.evaluate(() => JSON.parse(localStorage.getItem("ff.settings.v1")).scene), "quantum", "falls back to Quantum Nebula");
+  eq(await tile("quantum"), "true");
+  eq(errors, []);
+  await ctx.close();
+});
+
 /* ================= Reduced motion ================= */
 await test("reduced motion: state changes are immediate, no running animations", async () => {
   const { page, ctx } = await open({ reducedMotion: "reduce" });

@@ -47,18 +47,17 @@
     try { s = s.normalize("NFKC"); } catch (e) { /* very old engines: keep as is */ }
     return s.toLowerCase();
   }
-  function collapse(s) { return s.replace(WS, " ").trim(); }
+  const EXTENSION = /\.[a-z0-9]{1,5}$/i;
+  // Apostrophes join, other punctuation becomes a space, whitespace collapses.
+  function clean(s) { return s.replace(APOS, "").replace(PUNCT, " ").replace(WS, " ").trim(); }
 
   // Titles (built-in names, scenic views): punctuation becomes a space.
-  function normalizeTitle(s) { return collapse(base(s).replace(APOS, "").replace(PUNCT, " ")); }
+  function normalizeTitle(s) { return clean(base(s)); }
   // Personal names: conservative. Apostrophes join ("O'Brien" -> "obrien"), hyphens split,
   // letters and accents are kept as written.
-  function normalizeName(s) { return collapse(base(s).replace(APOS, "").replace(PUNCT, " ")); }
+  function normalizeName(s) { return clean(base(s)); }
   // Filenames: drop a trailing extension, then treat _ - . as spaces.
-  function normalizeFilename(s) {
-    const b = base(s).replace(/\.[a-z0-9]{1,5}$/i, "");
-    return collapse(b.replace(APOS, "").replace(PUNCT, " "));
-  }
+  function normalizeFilename(s) { return clean(base(s).replace(EXTENSION, "")); }
   function tokenize(normalized) { return normalized ? normalized.split(" ").filter(Boolean) : []; }
 
   /* ---------- Phone numbers ---------- */
@@ -325,18 +324,19 @@
         if (!c) return null;
         let best = null, bestDist = Infinity, tie = false;
         const qtext = q.norm.replace(/ /g, "");
+        const bound = suggestBound(qtext.length);
+        if (!bound) return null;
         c.records.forEach(record => {
+          const consider = cand => {
+            const d = Math.min(boundedDistance(q.norm, cand, bound), boundedDistance(qtext, cand, bound));
+            if (d > bound) return;
+            if (d < bestDist) { bestDist = d; best = record; tie = false; }
+            else if (d === bestDist && best && best.id !== record.id) tie = true;
+          };
           record._fields.forEach(f => {
             if (f.kind === "phone") return;
-            const cands = f.toks.concat([f.norm]);
-            cands.forEach(cand => {
-              const bound = suggestBound(qtext.length);
-              if (!bound) return;
-              const d = Math.min(boundedDistance(q.norm, cand, bound), boundedDistance(qtext, cand, bound));
-              if (d > bound) return;
-              if (d < bestDist) { bestDist = d; best = record; tie = false; }
-              else if (d === bestDist && best && best.id !== record.id) tie = true;
-            });
+            f.toks.forEach(consider);
+            consider(f.norm);
           });
         });
         // Never offer a weak or ambiguous guess.

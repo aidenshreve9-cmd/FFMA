@@ -9,14 +9,10 @@
   /* Quantum Nebula Void: Warm Obsidian Event Horizon */
   --pitch:#000000;
   --obsidian:#08040C;
-  --indigo:#1E005B;
   --indigo-2:#2A085C;
   --copper:#FF5400;
-  --amber:#E65100;
   --rose:#F72585;
   --magenta:#D900FF;
-  --violet:#6A0DAD;
-  --violet-2:#8A2BE2;
   --core:#FFFFFF;
   --halo:#E0C3FC;
   --prism-a:#FF007F;
@@ -140,7 +136,6 @@ blockquote cite{font-style:normal;color:var(--muted);font-size:13px;letter-spaci
 .set-body{flex:1;overflow-y:auto;padding:4px 20px 30px;display:flex;flex-direction:column;gap:24px}
 .set-sec h2{font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin:10px 0 12px}
 .note{font-size:13px;color:var(--muted);margin:10px 0 0}
-.note.warn{color:var(--warn)}
 .choices{display:flex;flex-direction:column}
 .choice{position:relative;display:flex;align-items:center;gap:14px;min-height:54px;padding:0 16px;border:0;border-top:1px solid rgba(224,195,252,.08);background:none;text-align:left;cursor:pointer;width:100%;transition:background .3s}
 .choice:hover{background:rgba(224,195,252,.03)}
@@ -182,7 +177,7 @@ blockquote cite{font-style:normal;color:var(--muted);font-size:13px;letter-spaci
 .empty{color:var(--faint);font-size:14px;margin:0}
 form.addc{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-top:14px}
 @media (max-width:360px){form.addc{grid-template-columns:1fr}}
-input[type=text],input[type=tel]{min-width:0;min-height:44px;border-radius:12px;border:1px solid var(--glass-line);background:rgba(0,0,0,.45);color:var(--text);padding:0 12px;font:inherit;transition:border-color .3s,box-shadow .3s}
+input[type=text],input[type=tel],input[type=search]{min-width:0;min-height:44px;border-radius:12px;border:1px solid var(--glass-line);background:rgba(0,0,0,.45);color:var(--text);padding:0 12px;font:inherit;transition:border-color .3s,box-shadow .3s}
 input[type=tel]{font-family:var(--mono);font-size:14px}
 input:focus{outline:none;border-color:var(--rose);box-shadow:0 0 14px rgba(247,37,133,.3)}
 input::placeholder{color:var(--faint)}
@@ -230,9 +225,7 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
 /* ---------- Local search (Settings only) ---------- */
 .search{position:relative;margin:0 0 12px}
 .search svg{position:absolute;left:12px;top:50%;width:16px;height:16px;margin-top:-8px;stroke:var(--faint);fill:none;stroke-width:1.8;stroke-linecap:round;pointer-events:none}
-.search input{width:100%;box-sizing:border-box;min-height:44px;border-radius:12px;border:1px solid var(--glass-line);background:rgba(0,0,0,.45);color:var(--text);padding:0 12px 0 36px;font:inherit;font-size:14.5px;transition:border-color .3s,box-shadow .3s}
-.search input:focus{outline:none;border-color:var(--rose);box-shadow:0 0 14px rgba(247,37,133,.3)}
-.search input::placeholder{color:var(--faint)}
+.search input{width:100%;box-sizing:border-box;padding:0 12px 0 36px;font-size:14.5px}
 .search input::-webkit-search-cancel-button{filter:invert(.7)}
 .search-empty{padding:14px 16px;color:var(--muted);font-size:13.5px}
 .search-empty b{display:block;color:var(--text);font-weight:600;margin-bottom:2px}
@@ -456,8 +449,8 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
 const DURATIONS = [15, 30, 45, 60];            // APPROVED values; cycles 60 → 15 (user-approved change)
 const DEFAULT_INDEX = 0;                       // APPROVED: always opens on 15
 const ITEM_W = 58;                             // px of finger travel per step
-const TAP_SLOP = 7;
-const FLICK_VELOCITY = 0.0035;                 // items per ms (~0.2 px/ms at 58 px per item)                            // px before a touch counts as a slide
+const TAP_SLOP = 7;                            // px before a touch counts as a slide
+const FLICK_VELOCITY = 0.0035;                 // items per ms (~0.2 px/ms at 58 px per item)
 const REPEAT_CALL_WINDOW_MIN = 15;             // Android's repeat-caller window
 const DONATION_LINK = null;                    // NOT APPROVED — no link yet
 const SCENES = [
@@ -505,6 +498,7 @@ const motionOK = () => !reduceMotion.matches && typeof Element.prototype.animate
 const EASE = "cubic-bezier(.22,.8,.2,1)";
 const $ = id => document.getElementById(id);
 const mod = (n, m) => ((n % m) + m) % m;
+const plural = (n, one, many) => (n === 1 ? one : many);
 
 /* ================= Storage (local only) ================= */
 const SKEY = "ff.settings.v1";
@@ -541,10 +535,10 @@ const searcher = (() => {
     c.define("sounds", { title: "title" });
     c.define("scenes", { title: "title" });
     c.define("trustedContacts", { name: "name", phone: "phone" });
-    c.load("sounds", SOUNDS.map(x => ({ id: x.id, type: "sound", title: x.name, searchableFields: { title: x.name } }))
-      .concat([{ id: "random", type: "sound", title: "Random", searchableFields: { title: "Random" } }]));
-    c.load("scenes", SCENES.map(x => ({ id: x.id, type: "scene", title: x.name, searchableFields: { title: x.name } }))
-      .concat([{ id: "random", type: "scene", title: "Random", searchableFields: { title: "Random" } }]));
+    const titled = (list, type) => list.concat([{ id: "random", name: "Random" }])
+      .map(x => ({ id: x.id, type, title: x.name, searchableFields: { title: x.name } }));
+    c.load("sounds", titled(SOUNDS, "sound"));
+    c.load("scenes", titled(SCENES, "scene"));
     c.load("trustedContacts", settings.contacts.map(contactRecord));
     return c;
   } catch (e) { return null; } // search is optional: Focus works without it
@@ -905,7 +899,7 @@ function renderPermOptional() {
     li.append(b, tag, document.createTextNode(" — " + detail));
     ul.appendChild(li);
   };
-  row("Trusted Contacts", settings.trustedOn, n ? `${n} ${n === 1 ? "person" : "people"} can call and message you.` : "no one added yet.");
+  row("Trusted Contacts", settings.trustedOn, n ? `${n} ${plural(n, "person", "people")} can call and message you.` : "no one added yet.");
   row("Alarm Safety", settings.alarmSafety, "alarms ring during Focus.");
 }
 function showPermSheet() { renderPermOptional(); openModal("permSheet"); }
@@ -964,8 +958,9 @@ function tick() {
   const m = minsLeft(ms);
   $("minsNum").textContent = m;
   sessionDial.set(ms / 3600000, session.minutes); // same 60-minute face as Home
-  $("timerBtn").setAttribute("aria-label", `${m} ${m === 1 ? "minute" : "minutes"} left. Tap to end early.`);
-  if (m !== lastAnnounced) { $("timerLive").textContent = `${m} ${m === 1 ? "minute" : "minutes"} left`; lastAnnounced = m; }
+  const left = `${m} ${plural(m, "minute", "minutes")} left`;
+  $("timerBtn").setAttribute("aria-label", `${left}. Tap to end early.`);
+  if (m !== lastAnnounced) { $("timerLive").textContent = left; lastAnnounced = m; }
   if (state === "CONFIRM_END") $("endLeft").textContent = `About ${m} min left.`;
 }
 
@@ -1073,15 +1068,18 @@ function colourChain(ctx, kind) {
     default:       return [];
   }
 }
-function soundChoiceFor(id) {
+// Built-in, Random (drawn from built-ins and the person's own files), or the person's own file.
+function choiceFor(id, builtIns, assetType) {
   if (id === "random") {
-    const pool = [...SOUNDS.map(s => s.id), ...assets.filter(a => a.type === "snd").map(a => a.id)];
+    const pool = [...builtIns.map(s => s.id), ...assets.filter(a => a.type === assetType).map(a => a.id)];
     id = pool[Math.floor(Math.random() * pool.length)];
   }
-  const b = SOUNDS.find(s => s.id === id); if (b) return { id, name: b.name, gain: b.gain };
+  const b = builtIns.find(s => s.id === id);
+  if (b) return b.gain == null ? { id, name: b.name } : { id, name: b.name, gain: b.gain };
   const a = assets.find(x => x.id === id);
   return a ? { id, name: a.name, url: a.url } : null;
 }
+function soundChoiceFor(id) { return choiceFor(id, SOUNDS, "snd"); }
 // null = no sound chosen (Focus is silent).
 function resolveSound() {
   if (settings.audio === "none") return null;
@@ -1253,7 +1251,7 @@ const MOTES = Array.from({ length: 90 }, () => ({ x: R1(), y: R1(), z: R1(), vx:
 const NEBULA_LEVEL = { home: .18, settings: 1, done: .8, session: .8 };
 let nebLevel = NEBULA_LEVEL.home;
 function drawNebula(t) {
-  const { c, w, h } = fit($("nebula"), .5), m = Math.max(w, h), L = nebLevel;
+  const { c, w, h } = fit(view.nebula, .5), m = Math.max(w, h), L = nebLevel;
   c.globalCompositeOperation = "source-over";
   c.fillStyle = "#000"; c.fillRect(0, 0, w, h);
   glow(c, w * .5, h * .5, m * .85, "#1E005B", .85 * L);
@@ -1409,7 +1407,9 @@ const RG = rng(3);
 const GALAXY = Array.from({ length: 1500 }, (_, i) => {
   const arm = i % 2, rr = Math.pow(RG(), .75), spread = (RG() - .5) * .55 * (1 - rr * .4);
   const col = rr < .16 ? "#FFE3CC" : rr < .35 ? (RG() < .5 ? "#E0C3FC" : "#F72585") : (RG() < .6 ? "#8A2BE2" : "#6f7dff");
-  return { ang: arm * Math.PI + rr * 5.2 + spread, rr, off: (RG() - .5) * .05, s: .6 + RG() * 1.2, a: .35 + RG() * .6, col };
+  const p = { ang: arm * Math.PI + rr * 5.2 + spread, rr, off: (RG() - .5) * .05, s: .6 + RG() * 1.2, a: .35 + RG() * .6, col };
+  p.fill = `rgba(${rgb(col)},${p.a})`;
+  return p;
 });
 const DISK = Array.from({ length: 900 }, () => {
   const k = 1.55 + Math.pow(RG(), 1.4) * 2.6;
@@ -1418,7 +1418,9 @@ const DISK = Array.from({ length: 900 }, () => {
 });
 const MW = Array.from({ length: 900 }, () => {
   const g = (RG() + RG() + RG() - 1.5) / 1.5;
-  return { u: RG(), v: g * .16, s: .5 + RG() * 1.1, a: .25 + RG() * .7, col: RG() < .15 ? "#FFD2B0" : RG() < .3 ? "#E0C3FC" : "#cfd6ff" };
+  const s = { u: RG(), v: g * .16, s: .5 + RG() * 1.1, a: .25 + RG() * .7, col: RG() < .15 ? "#FFD2B0" : RG() < .3 ? "#E0C3FC" : "#cfd6ff" };
+  s.fill = `rgba(${rgb(s.col)},${s.a})`;
+  return s;
 });
 const NODES = Array.from({ length: 28 }, () => ({ x: .05 + RG() * .9, y: .05 + RG() * .9, ph: RG() * 6.28, r: .6 + RG() * 1.2 }));
 const EDGES = [];
@@ -1451,7 +1453,7 @@ const PAINT = {
     const cr = Math.cos(-.35), sr = Math.sin(-.35);
     GALAXY.forEach(p => {
       const a = p.ang + rot * (1.4 - p.rr), x0 = Math.cos(a) * p.rr * sc + p.off * sc, y0 = Math.sin(a) * p.rr * sc * .52;
-      c.fillStyle = `rgba(${rgb(p.col)},${p.a})`; c.fillRect(cx + x0 * cr - y0 * sr, cy + x0 * sr + y0 * cr, p.s, p.s);
+      c.fillStyle = p.fill; c.fillRect(cx + x0 * cr - y0 * sr, cy + x0 * sr + y0 * cr, p.s, p.s);
     });
     c.globalCompositeOperation = "source-over";
   },
@@ -1513,7 +1515,7 @@ const PAINT = {
     c.globalCompositeOperation = "lighter";
     for (let i = 0; i <= 8; i++) { const [x, y] = at(i / 8, 0); glow(c, x, y, len * .2, i % 3 === 1 ? "#8A2BE2" : "#2A3A9A", .28); }
     const drift = t * .002;
-    MW.forEach(s => { const [x, y] = at(((s.u + drift) % 1 + 1) % 1, s.v); c.fillStyle = `rgba(${rgb(s.col)},${s.a})`; c.fillRect(x, y, s.s, s.s); });
+    MW.forEach(s => { const [x, y] = at(((s.u + drift) % 1 + 1) % 1, s.v); c.fillStyle = s.fill; c.fillRect(x, y, s.s, s.s); });
     c.globalCompositeOperation = "source-over";
     [[.22, .01, .18], [.45, -.02, .22], [.7, .015, .2], [.9, -.01, .15]].forEach(([u, v, r], i) => {
       const [x, y] = at(u + .02 * Math.sin(t * .01 + i), v); streak(c, x, y, len * r * .5, "#000000", .75, ang, 3, .28);
@@ -1582,29 +1584,24 @@ function paintImage(c, w, h, img) {
   c.fillStyle = "#000"; c.fillRect(0, 0, w, h);
   c.drawImage(img, (w - iw) / 2, (h - ih) / 2, iw, ih);
 }
-function resolveScene() { return sceneChoiceFor(settings.scene) || { id: DEFAULT_SCENE, name: SCENES[0].name }; }
-function sceneChoiceFor(id) {
-  if (id === "random") {
-    const pool = [...SCENES.map(s => s.id), ...assets.filter(a => a.type === "img").map(a => a.id)];
-    id = pool[Math.floor(Math.random() * pool.length)];
-  }
-  const b = SCENES.find(s => s.id === id); if (b) return { id, name: b.name };
-  const a = assets.find(x => x.id === id);
-  return a ? { id, name: a.name, url: a.url } : null;
+const defaultScene = () => ({ id: DEFAULT_SCENE, name: SCENES[0].name });
+function sceneChoiceFor(id) { return choiceFor(id, SCENES, "img"); }
+function resolveScene() { return sceneChoiceFor(settings.scene) || defaultScene(); }
+// A built-in scene, or the person's picture (black until it has loaded).
+function paintChoice(canvas, choice, img, t) {
+  const { c, w, h } = fit(canvas, 1);
+  if (!choice.url) { PAINT[choice.id](c, w, h, t); return; }
+  if (img && img.complete && img.naturalWidth) paintImage(c, w, h, img); else { c.fillStyle = "#000"; c.fillRect(0, 0, w, h); }
+}
+function loadPicture(url, onerror) {
+  const img = new Image(); img.onload = markDirty;
+  if (onerror) img.onerror = onerror;
+  img.src = url; return img;
 }
 let sceneImg = null, sceneChoice = null;
-function drawScene(t) {
-  const { c, w, h } = fit($("sceneCanvas"), 1);
-  if (sceneChoice.url) { if (sceneImg && sceneImg.complete && sceneImg.naturalWidth) paintImage(c, w, h, sceneImg); else { c.fillStyle = "#000"; c.fillRect(0, 0, w, h); } return; }
-  PAINT[sceneChoice.id](c, w, h, t);
-}
 function startScene(choice) {
   sceneChoice = choice; sceneImg = null;
-  if (choice.url) {
-    sceneImg = new Image(); sceneImg.onload = markDirty;
-    sceneImg.onerror = () => { sceneChoice = { id: DEFAULT_SCENE, name: SCENES[0].name }; markDirty(); };
-    sceneImg.src = choice.url;
-  }
+  if (choice.url) sceneImg = loadPicture(choice.url, () => { sceneChoice = defaultScene(); markDirty(); });
   markDirty();
 }
 function stopScene() { if (visibleScreen !== "session") { sceneChoice = null; sceneImg = null; } }
@@ -1624,6 +1621,8 @@ function trackFrameCost(gap) {
   }
 }
 const T0 = performance.now();
+const view = { home: $("home"), session: $("session"), done: $("done"), settings: $("settings"),
+  focusBtn: $("focusBtn"), timerBtn: $("timerBtn"), nebula: $("nebula"), sceneCanvas: $("sceneCanvas"), setScene: $("setScene") };
 function markDirty() { dirty = true; }
 function frame(now) {
   requestAnimationFrame(frame);
@@ -1635,21 +1634,21 @@ function frame(now) {
   ["home", "session"].forEach(k => { const s = act[k]; const d = s.target - s.v; if (Math.abs(d) > .002) { s.v += d * .08; settling = true; actChanged = true; } else if (s.v !== s.target) { s.v = s.target; actChanged = true; } });
   const nt = NEBULA_LEVEL[visibleScreen]; if (Math.abs(nt - nebLevel) > .002) { nebLevel += (nt - nebLevel) * .06; settling = true; } else nebLevel = nt;
   if (actChanged) {
-    $("focusBtn").style.setProperty("--act", act.home.v.toFixed(3));
-    $("timerBtn").style.setProperty("--act", act.session.v.toFixed(3));
+    view.focusBtn.style.setProperty("--act", act.home.v.toFixed(3));
+    view.timerBtn.style.setProperty("--act", act.session.v.toFixed(3));
   }
   if (!animate && !dirty && !settling) return;
   if (!dirty && now - lastFrame < 33) return;
   if (animate && lastFrame) trackFrameCost(now - lastFrame);
   lastFrame = now; const wasDirty = dirty; dirty = false;
   const t = animate ? (now - T0) / 1000 : 20;
-  const onSession = visibleScreen === "session" || !$("session").hidden;
-  if (onSession && sceneChoice && (!sceneChoice.url || wasDirty)) drawScene(t);
-  if ((visibleScreen !== "session" && visibleScreen !== "settings") || !$("home").hidden || !$("done").hidden) drawNebula(t);
-  if (!$("settings").hidden && setBg && (!setBg.url || wasDirty)) drawAtmosphere(t);
-  if (!$("home").hidden) orb("home").draw(t, act.home.v);
-  if (!$("session").hidden) orb("session").draw(t, act.session.v);
-  if (!$("done").hidden) orb("done").draw(t, 0);
+  const onSession = visibleScreen === "session" || !view.session.hidden;
+  if (onSession && sceneChoice && (!sceneChoice.url || wasDirty)) paintChoice(view.sceneCanvas, sceneChoice, sceneImg, t);
+  if ((visibleScreen !== "session" && visibleScreen !== "settings") || !view.home.hidden || !view.done.hidden) drawNebula(t);
+  if (!view.settings.hidden && setBg && (!setBg.url || wasDirty)) paintChoice(view.setScene, setBg, setBgImg, t);
+  if (!view.home.hidden) orb("home").draw(t, act.home.v);
+  if (!view.session.hidden) orb("session").draw(t, act.session.v);
+  if (!view.done.hidden) orb("done").draw(t, 0);
 }
 requestAnimationFrame(frame);
 window.addEventListener("resize", markDirty);
@@ -1704,15 +1703,9 @@ function showAtmosphere(id, animate) {
     old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 700, easing: EASE });
   }
   setBgFor = id;
-  setBg = sceneChoiceFor(id) || { id: DEFAULT_SCENE, name: SCENES[0].name };
-  setBgImg = null;
-  if (setBg.url) { setBgImg = new Image(); setBgImg.onload = markDirty; setBgImg.src = setBg.url; }
+  setBg = sceneChoiceFor(id) || defaultScene();
+  setBgImg = setBg.url ? loadPicture(setBg.url) : null;
   markDirty();
-}
-function drawAtmosphere(t) {
-  const { c, w, h } = fit($("setScene"), 1);
-  if (setBg.url) { if (setBgImg && setBgImg.complete && setBgImg.naturalWidth) paintImage(c, w, h, setBgImg); else { c.fillStyle = "#000"; c.fillRect(0, 0, w, h); } return; }
-  PAINT[setBg.id](c, w, h, t);
 }
 function renderScenes() {
   if (setBgFor !== settings.scene) showAtmosphere(settings.scene, !$("settings").hidden);
@@ -1765,12 +1758,13 @@ function renderContacts() {
   });
   contactFilter.sync(settings.contacts.length);
 }
+function contactsChanged() { saveSettings(); renderContacts(); renderTrust(); }
 function removeContact(id, row) {
   const done = () => {
     const gone = settings.contacts.find(x => x.id === id);
     settings.contacts = settings.contacts.filter(x => x.id !== id);
     indexRemove("trustedContacts", id);
-    saveSettings(); renderContacts(); renderTrust();
+    contactsChanged();
     if (gone) toast("Removed " + gone.name);
     const next = $("contactQuery").hidden || $("contactSearch").hidden ? $("cName") : $("contactQuery");
     next.focus({ preventScroll: true });
@@ -1799,7 +1793,7 @@ function renderTrust() {
   $("contactCard").classList.toggle("dim", !settings.trustedOn);
   const n = settings.contacts.length;
   $("trustNote").textContent = settings.trustedOn
-    ? (n ? `On: ${n} ${n === 1 ? "person" : "people"} can reach you during Focus in the Android app. Stored only on this device.`
+    ? (n ? `On: ${n} ${plural(n, "person", "people")} can reach you during Focus in the Android app. Stored only on this device.`
          : "On, but no one is added yet. Stored only on this device.")
     : "The Trusted Contacts list is off. During Focus, only emergency alerts and repeat callers get through. Stored only on this device.";
 }
@@ -1866,7 +1860,7 @@ function createFilter(cfg) {
     });
     empty.hidden = shown > 0;
     if (!shown) renderEmpty(input.value);
-    announce(shown ? `${shown} matching ${shown === 1 ? cfg.singular : cfg.plural}.` : `No matching ${cfg.plural}.`);
+    announce(shown ? `${shown} matching ${plural(shown, cfg.singular, cfg.plural)}.` : `No matching ${cfg.plural}.`);
   }
   function focusRow(r) { (r.matches(cfg.focusSel) ? r : r.querySelector(cfg.focusSel) || r).focus({ preventScroll: false }); }
 
@@ -1932,7 +1926,7 @@ $("contactForm").addEventListener("submit", e => {
   if (!name) { toast("Add a name and a phone number."); return; }
   const err = addContact(name, $("cNum").value);
   if (err) { toast(err); return; }
-  saveSettings(); renderContacts(); renderTrust();
+  contactsChanged();
   toast("Added " + name.slice(0, 40));
   $("cName").value = ""; $("cNum").value = ""; $("cName").focus();
 });
@@ -1944,19 +1938,24 @@ if ("contacts" in navigator && navigator.contacts && typeof navigator.contacts.s
       const picked = await navigator.contacts.select(["name", "tel"], { multiple: true });
       let added = 0, skipped = 0;
       (picked || []).forEach(p => { const tel = (p.tel || [])[0]; if (tel && !addContact((p.name || [])[0], tel)) added++; else skipped++; });
-      saveSettings(); renderContacts(); renderTrust();
-      toast(added ? `Added ${added} Trusted ${added === 1 ? "Contact" : "Contacts"}.` : skipped ? "Those contacts were already added or had no number." : "No contacts chosen.");
+      contactsChanged();
+      toast(added ? `Added ${added} Trusted ${plural(added, "Contact", "Contacts")}.` : skipped ? "Those contacts were already added or had no number." : "No contacts chosen.");
     } catch (e) { toast("The contact picker isn't available here. Type the number instead."); }
   };
 }
 
 $("addSound").onclick = () => $("soundFile").click();
 $("addPic").onclick = () => $("picFile").click();
+// The checks both file pickers share. Returns the chosen file, or null after saying why not.
+function acceptFile(e, typeRe, wrongType, maxMB, tooLarge) {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return null;
+  if (!db) { toast("This browser can't store your own files."); return null; }
+  if (!typeRe.test(f.type)) { toast(wrongType); return null; }
+  if (f.size > maxMB * 1024 * 1024) { toast(tooLarge); return null; }
+  return f;
+}
 $("soundFile").addEventListener("change", async e => {
-  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
-  if (!db) { toast("This browser can't store your own files."); return; }
-  if (!/^audio\//.test(f.type)) { toast("That file isn't a sound."); return; }
-  if (f.size > 20 * 1024 * 1024) { toast("That sound is too large. Pick one under 20 MB."); return; }
+  const f = acceptFile(e, /^audio\//, "That file isn't a sound.", 20, "That sound is too large. Pick one under 20 MB."); if (!f) return;
   const ok = await new Promise(res => { const a = new Audio(); const u = URL.createObjectURL(f); a.preload = "metadata";
     a.onloadedmetadata = () => { URL.revokeObjectURL(u); res(true); }; a.onerror = () => { URL.revokeObjectURL(u); res(false); }; a.src = u; });
   if (!ok) { toast("That sound can't be played on this device."); return; }
@@ -1964,10 +1963,7 @@ $("soundFile").addEventListener("change", async e => {
   if (a) { settings.audio = a.id; saveSettings(); renderSound(); toast("Added " + a.name); }
 });
 $("picFile").addEventListener("change", async e => {
-  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
-  if (!db) { toast("This browser can't store your own files."); return; }
-  if (!/^image\//.test(f.type)) { toast("That file isn't a picture."); return; }
-  if (f.size > 30 * 1024 * 1024) { toast("That picture is too large."); return; }
+  const f = acceptFile(e, /^image\//, "That file isn't a picture.", 30, "That picture is too large."); if (!f) return;
   const blob = await new Promise(res => {
     const u = URL.createObjectURL(f), img = new Image();
     img.onload = () => {
@@ -2009,7 +2005,6 @@ document.addEventListener("keydown", e => {
 window.addEventListener("pagehide", () => { if (session && !session.finished) { distraction.restorePreviousSystemState(); } });
 
 resetDuration();
-renderSettings();
-loadAssets();
+loadAssets(); // renders Settings once saved pictures and sounds are known (and again whenever Settings opens)
 })();
 </script>

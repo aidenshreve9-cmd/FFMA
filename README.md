@@ -18,7 +18,7 @@ no cloud. Settings, contacts, sounds and pictures stay on your device.
 ## Test it
 ```bash
 npm test                 # 29 search tests (Node, no dependencies)
-npm run test:ui          # 19 browser UI tests (Playwright)
+npm run test:ui          # 21 browser UI tests (Playwright)
 cd android && ./gradlew -Pff.coreOnly=true :core:test      # 34 Kotlin core tests
 cd android && ./gradlew :app:testDebugUnitTest             # Robolectric Do Not Disturb tests
 ```
@@ -30,6 +30,7 @@ cd android && ./gradlew :app:testDebugUnitTest             # Robolectric Do Not 
 - `docs/PRIVACY_SECURITY.md` — what stays local, what's never sent or logged, protections
 - `docs/TESTING.md` — suites, results, what wasn't verified, device checklist
 - `docs/DECISIONS.md` — spec conflicts and how each was resolved; open choices
+- `docs/OPTIMIZATION.md` — the optimization pass: what changed, how it was verified, how to get the original back
 - `prototype/logbook.html` — change log
 
 ## V3.0 engineering outputs → where to find them

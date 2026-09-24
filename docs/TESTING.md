@@ -15,7 +15,7 @@ cd android
 | Suite | Result |
 |-------|--------|
 | `tests/search` (JS) — 29 tests | **29 passed** |
-| `tests/ui` (Playwright, Chromium) — 19 tests | **19 passed** |
+| `tests/ui` (Playwright, Chromium) — 21 tests | **21 passed** |
 | `android/core` (Kotlin, JUnit 5) — 34 tests | **34 passed** |
 | `android/app` type-check against Android 15 framework (`:verify`) | **Compiles, 0 errors** (91 classes) |
 | `android/app/src/test` Robolectric DND tests — 8 tests | **Compile; not run here** (need `androidx.test` from Google's repository, which is blocked in this sandbox) |
@@ -54,7 +54,9 @@ keyboard (↓ ↑ Enter Escape); removal updates the index; sound search appears
 or numbers in the console; search failure never prevents Focus; Atmosphere naming and the Settings
 background changing as you choose; sound preview (5 s, fade in/out, never two sounds at once, quick
 taps skip to the last, re-tap deselects, leaving Settings stops it); the Focus sound's level tracks
-the page transition frame by frame, keeps playing, stops at the end; no sound → silent Focus.
+the page transition frame by frame, keeps playing, stops at the end; no sound → silent Focus; Random sound and atmosphere
+resolve to real choices; your own picture: wrong type refused, chosen, kept after reload, used in Focus,
+removal falls back to Quantum Nebula.
 
 **Robolectric (Android DND layer, written):** no access → nothing silenced, nothing created; the
 rule uses the spec policy (calls/messages none, repeat callers, alarms, media, visual effects hidden);

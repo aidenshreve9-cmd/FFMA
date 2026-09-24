@@ -103,7 +103,7 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:v
   <div class="stats" role="list">
     <div role="listitem"><b>3.0</b><span>spec implemented</span></div>
     <div role="listitem"><b>2</b><span>platforms: browser + Android</span></div>
-    <div role="listitem"><b>82</b><span>automated tests passing</span></div>
+    <div role="listitem"><b>84</b><span>automated tests passing</span></div>
     <div role="listitem"><b>13</b><span>spec conflicts resolved</span></div>
   </div>
 
@@ -291,6 +291,21 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:v
           <li><b>Leaving Settings</b> stops the preview at once (on Android, leaving the app does too).</li>
           <li><b>Focus:</b> the sound loops for the whole session and fades in frame by frame with the page transition.</li>
           <li><b>Checked:</b> 29 search, 19 browser UI and 34 Kotlin tests pass; the Android app compiles against Android 15. It hasn't been heard on a real phone yet.</li>
+        </ul>
+      </div>
+    </li>
+
+    <li class="entry">
+      <div class="meta"><time datetime="2026-09-24T14:00Z">24 Sep</time><span class="tag">Optimization</span></div>
+      <h3>Safe code optimization</h3>
+      <p class="ask">You asked to optimize the code without changing the app, and to keep the original recoverable.</p>
+      <div class="card">
+        <ul>
+          <li><b>Original kept:</b> Git tag <code>focus-friend-v3.0-original</code>.</li>
+          <li><b>Browser:</b> sound and atmosphere lookups, background painting and file-picker checks each live in one place now. Fixed particle colours are worked out once instead of every frame, and a few unused styles are gone.</li>
+          <li><b>Android:</b> the scenes, the dial and the glass panels stopped creating fixed objects on every frame.</li>
+          <li><b>Unchanged:</b> screens, wording, settings, storage and behaviour. Every browser screen and all 8 atmospheres match the original pixel for pixel.</li>
+          <li><b>Checked:</b> 29 search, 21 browser UI (2 new) and 34 Kotlin tests pass; the Android app compiles against Android 15. See <code>docs/OPTIMIZATION.md</code>.</li>
         </ul>
       </div>
     </li>

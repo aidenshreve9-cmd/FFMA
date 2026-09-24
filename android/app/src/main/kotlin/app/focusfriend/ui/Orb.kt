@@ -208,6 +208,19 @@ class DialView(c: Context) : AmbientView(c) {
     private val arcRect = RectF()
     private var anim: ValueAnimator? = null
     private val mono = Fonts.mono(c)
+    // The face never changes shape, so its geometry is computed once (in the dial's 200×200 units).
+    private val arcShader = SweepGradient(100f, 100f, intArrayOf(Palette.ROSE, Palette.MAGENTA, Palette.VIOLET_2, Palette.ROSE), null)
+    private val ticks = FloatArray(120 * 4).also { t ->
+        for (i in 0 until 120) {
+            val a = i / 120.0 * Math.PI * 2; val r1 = if (i % 10 == 0) 88f else 90.5f
+            t[4 * i] = 100 + sin(a).toFloat() * r1; t[4 * i + 1] = 100 - cos(a).toFloat() * r1
+            t[4 * i + 2] = 100 + sin(a).toFloat() * 93f; t[4 * i + 3] = 100 - cos(a).toFloat() * 93f
+        }
+    }
+    private val numbers = Durations.MINUTES.map { m ->
+        val a = m / 60.0 * Math.PI * 2
+        Triple(m, "$m", floatArrayOf(100 + sin(a).toFloat() * 72.5f, 100 - cos(a).toFloat() * 72.5f + 2.4f))
+    }
 
     fun set(frac: Float, minutes: Int, animate: Boolean) {
         activeMinutes = minutes
@@ -227,16 +240,16 @@ class DialView(c: Context) : AmbientView(c) {
         // ticks: one revolution every 240 s
         canvas.save(); canvas.rotate(time * 1.5f, 100f, 100f)
         for (i in 0 until 120) {
-            val a = i / 120.0 * Math.PI * 2; val major = i % 10 == 0; val r1 = if (major) 88f else 90.5f
+            val major = i % 10 == 0
             p.color = Palette.withAlpha(Palette.HALO, if (major) .7f else .3f); p.strokeWidth = if (major) .7f else .35f
-            canvas.drawLine(100 + sin(a).toFloat() * r1, 100 - cos(a).toFloat() * r1, 100 + sin(a).toFloat() * 93f, 100 - cos(a).toFloat() * 93f, p)
+            canvas.drawLine(ticks[4 * i], ticks[4 * i + 1], ticks[4 * i + 2], ticks[4 * i + 3], p)
         }
         canvas.restore()
         p.color = Palette.withAlpha(Palette.INDIGO_2, .85f); p.strokeWidth = 2.2f; canvas.drawCircle(100f, 100f, 84f, p)
         arcRect.set(16f, 16f, 184f, 184f)
         if (fraction > .002f) {
             p.strokeWidth = 2.6f; p.strokeCap = Paint.Cap.ROUND
-            p.shader = SweepGradient(100f, 100f, intArrayOf(Palette.ROSE, Palette.MAGENTA, Palette.VIOLET_2, Palette.ROSE), null)
+            p.shader = arcShader
             p.setShadowLayer(4f, 0f, 0f, Palette.MAGENTA)
             canvas.drawArc(arcRect, -90f, 360f * fraction, false, p)
             p.clearShadowLayer(); p.shader = null
@@ -249,10 +262,9 @@ class DialView(c: Context) : AmbientView(c) {
         val breath = if (Motion.enabled) .22f + .53f * (.5f + .5f * sin(time * .698f)) else .5f
         p.color = Palette.withAlpha(Palette.MAGENTA, breath); p.strokeWidth = 1.1f; canvas.drawCircle(100f, 100f, 66f, p)
         p.style = Paint.Style.FILL; p.textAlign = Paint.Align.CENTER; p.typeface = mono; p.textSize = 7f
-        for (m in Durations.MINUTES) {
-            val a = m / 60.0 * Math.PI * 2
+        for ((m, label, at) in numbers) {
             p.color = if (m == activeMinutes) Palette.HALO else Palette.withAlpha(Palette.HALO, .5f)
-            canvas.drawText("$m", 100 + sin(a).toFloat() * 72.5f, 100 - cos(a).toFloat() * 72.5f + 2.4f, p)
+            canvas.drawText(label, at[0], at[1], p)
         }
         canvas.restore()
     }

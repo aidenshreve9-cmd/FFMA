@@ -113,5 +113,7 @@ See `docs/ANDROID.md` for the Android specifics and `docs/SEARCH.md` for search.
 - Search: normalized fields and tokens are computed once at index time; a keystroke only prepares
   the query and scans small collections; bounded fuzzy distance with early exit and reused buffers;
   small result cache cleared on change. Measured p95 at 10,000 records: ~16 ms (JS), ~9 ms (Kotlin).
+- Drawing: fixed geometry, gradients and particle colours are built once (or when a view's size
+  changes), not on every frame.
 - Rendering: ambient animation at ~30 fps, paused when hidden; the orb lowers its resolution (web)
   or volume samples (Android) when frames run late; reduced motion stops animation entirely.
