@@ -221,7 +221,19 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
 .sheet .left{font-family:var(--mono);color:var(--halo);letter-spacing:.04em}
 .callout{border-radius:14px;background:rgba(255,84,0,.08);box-shadow:inset 0 0 0 1px rgba(255,84,0,.3);color:var(--warn);padding:10px 12px;font-size:13.5px}
 
-.toast{position:absolute;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);padding:11px 18px;border-radius:999px;font-size:14px;z-index:20;max-width:calc(100% - 40px);text-align:center}
+.toast{pointer-events:none;position:absolute;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);padding:11px 18px;border-radius:999px;font-size:14px;z-index:20;max-width:calc(100% - 40px);text-align:center}
+/* ---------- Local search (Settings only) ---------- */
+.search{position:relative;margin:0 0 12px}
+.search svg{position:absolute;left:12px;top:50%;width:16px;height:16px;margin-top:-8px;stroke:var(--faint);fill:none;stroke-width:1.8;stroke-linecap:round;pointer-events:none}
+.search input{width:100%;box-sizing:border-box;min-height:44px;border-radius:12px;border:1px solid var(--glass-line);background:rgba(0,0,0,.45);color:var(--text);padding:0 12px 0 36px;font:inherit;font-size:14.5px;transition:border-color .3s,box-shadow .3s}
+.search input:focus{outline:none;border-color:var(--rose);box-shadow:0 0 14px rgba(247,37,133,.3)}
+.search input::placeholder{color:var(--faint)}
+.search input::-webkit-search-cancel-button{filter:invert(.7)}
+.search-empty{padding:14px 16px;color:var(--muted);font-size:13.5px}
+.search-empty b{display:block;color:var(--text);font-weight:600;margin-bottom:2px}
+.search-empty p{margin:0}
+.dym{background:none;border:0;padding:0;color:var(--halo);font:inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer;min-height:24px}
+.contact[tabindex]:focus-visible{outline:2px solid var(--halo);outline-offset:2px;border-radius:10px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 @media (prefers-reduced-motion: reduce){
@@ -304,7 +316,9 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
 
       <div class="set-sec">
         <h2>Sound</h2>
+        <div class="search" id="soundSearch" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><input type="search" id="soundQuery" placeholder="Search sounds…" aria-label="Search sounds" aria-controls="soundList" autocomplete="off" spellcheck="false"></div>
         <div class="choices glass prism" id="soundList" role="radiogroup" aria-label="Sound"></div>
+        <div class="search-empty" id="soundEmpty" hidden></div>
         <button class="add" id="addSound">＋ Add your own sound</button>
         <input type="file" id="soundFile" accept="audio/*" hidden>
         <p class="note">Use your phone's volume buttons to change how loud it is.</p>
@@ -312,7 +326,9 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
 
       <div class="set-sec">
         <h2>Scenic view</h2>
+        <div class="search" id="sceneSearch" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><input type="search" id="sceneQuery" placeholder="Search scenic views…" aria-label="Search scenic views" aria-controls="sceneList" autocomplete="off" spellcheck="false"></div>
         <div class="scenes" id="sceneList" role="radiogroup" aria-label="Scenic view"></div>
+        <div class="search-empty" id="sceneEmpty" hidden></div>
         <button class="add" id="addPic">＋ Add your own picture</button>
         <input type="file" id="picFile" accept="image/*" hidden>
       </div>
@@ -323,12 +339,14 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
           <div class="card glass prism toggle-row">
             <div class="txt">
               <b>Trusted Contacts — <span id="trustState">OFF</span></b>
-              <p>When on, calls and messages from these people get through Focus.</p>
+              <p>When on, these people can call and message you during Focus in the Android app. The browser preview can't let calls or messages through.</p>
             </div>
             <button class="switch" id="trustSwitch" role="switch" aria-checked="false" aria-label="Trusted Contacts"><span class="st">Trusted Contacts</span></button>
           </div>
           <div class="card glass prism" id="contactCard">
-            <div id="contactList"></div>
+            <div class="search" id="contactSearch" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><input type="search" id="contactQuery" placeholder="Search contacts…" aria-label="Search trusted contacts" aria-controls="contactList" autocomplete="off" spellcheck="false"></div>
+            <div id="contactList" role="list" aria-label="Trusted Contacts"></div>
+            <div class="search-empty" id="contactEmpty" hidden></div>
             <form class="addc" id="contactForm" autocomplete="off">
               <input type="text" id="cName" placeholder="Name" aria-label="Contact name" maxlength="40">
               <input type="tel" id="cNum" placeholder="Phone number" aria-label="Phone number" maxlength="24">
@@ -349,6 +367,7 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
           </div>
           <button class="switch" id="alarmSwitch" role="switch" aria-checked="true" aria-label="Alarm Safety"><span class="st">Alarm Safety</span></button>
         </div>
+        <p class="note">The browser preview can't change how your phone handles alarms, so real alarm pass-through isn't available here. It works in the Android app.</p>
       </div>
 
       <div class="set-sec">
@@ -376,7 +395,7 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
       <ul><li><b>Emergency alerts.</b></li><li><b>Repeat callers:</b> the first call is silenced. If the same person calls again within 15 minutes, that second call rings.</li></ul>
       <h3>Only when turned on in Settings</h3>
       <ul id="permOptional"></ul>
-      <div class="callout">You're using the browser preview. It can't change your phone's settings, so nothing is blocked here.</div>
+      <div class="callout">You're using the browser preview. A browser can't silence notifications or calls, so nothing is blocked here.</div>
       <div class="actions">
         <button class="btn primary wide" id="permAllow">Continue in preview</button>
         <button class="btn quiet wide" id="permDeny">Not now</button>
@@ -386,11 +405,11 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
 
   <div class="scrim" id="barrier" hidden>
     <div class="sheet glass prism" role="dialog" aria-modal="true" aria-labelledby="barTitle">
-      <h2 id="barTitle">Focus can't start yet</h2>
-      <p>Focus Friend needs this access to reduce distractions. Without it, a session can't start.</p>
+      <h2 id="barTitle">Focus can't start without access.</h2>
+      <p>Focus Friend needs Do Not Disturb access to reduce distractions.</p>
       <div class="actions">
-        <button class="btn primary wide" id="barReview">Review access</button>
-        <button class="btn quiet wide" id="barBack">Back</button>
+        <button class="btn primary wide" id="barReview">Review the rules again</button>
+        <button class="btn quiet wide" id="barBack">Go back</button>
       </div>
     </div>
   </div>
@@ -419,8 +438,10 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
   </div>
 
   <div class="toast glass" id="toast" role="status" hidden></div>
+  <p class="sr" id="liveMsg" aria-live="polite"></p>
 </div>
 
+<script src="search.js"></script>
 <script>
 (() => {
 "use strict";
@@ -429,7 +450,8 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
 const DURATIONS = [15, 30, 45, 60];            // APPROVED values; cycles 60 → 15 (user-approved change)
 const DEFAULT_INDEX = 0;                       // APPROVED: always opens on 15
 const ITEM_W = 58;                             // px of finger travel per step
-const TAP_SLOP = 7;                            // px before a touch counts as a slide
+const TAP_SLOP = 7;
+const FLICK_VELOCITY = 0.0035;                 // items per ms (~0.2 px/ms at 58 px per item)                            // px before a touch counts as a slide
 const REPEAT_CALL_WINDOW_MIN = 15;             // Android's repeat-caller window
 const DONATION_LINK = null;                    // NOT APPROVED — no link yet
 const SCENES = [
@@ -466,6 +488,13 @@ const QUOTES = [                               // APPROVED list
   ["The task at hand.", "Marcus Aurelius"],
 ];
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
+function digitsOf(v) { return String(v || "").replace(/\D+/g, ""); }
+function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+// Same number, allowing a 1–3 digit country code on either side.
+function samePhone(a, b) {
+  if (window.FFSearch) return FFSearch.phonesMatch(a, b);
+  return !!a && a === b;
+}
 const motionOK = () => !reduceMotion.matches && typeof Element.prototype.animate === "function";
 const EASE = "cubic-bezier(.22,.8,.2,1)";
 const $ = id => document.getElementById(id);
@@ -483,7 +512,10 @@ function loadSettings() {
       if (typeof raw.scene === "string") s.scene = raw.scene;
       if (typeof raw.alarmSafety === "boolean") s.alarmSafety = raw.alarmSafety;
       if (typeof raw.trustedOn === "boolean") s.trustedOn = raw.trustedOn;
-      if (Array.isArray(raw.contacts)) s.contacts = raw.contacts.filter(c => c && typeof c.name === "string" && typeof c.number === "string").slice(0, 50);
+      if (Array.isArray(raw.contacts)) s.contacts = raw.contacts
+        .filter(c => c && typeof c.name === "string" && typeof c.number === "string" && digitsOf(c.number).length >= 3)
+        .slice(0, 50)
+        .map(c => ({ id: typeof c.id === "string" && c.id ? c.id : newId(), name: c.name.slice(0, 40), number: c.number, normalized: digitsOf(c.number) }));
       s.previewAck = raw.previewAck === true;
     }
   } catch (e) { /* corrupt or blocked storage: fall back to defaults */ }
@@ -494,6 +526,34 @@ function saveSettings() {
   catch (e) { toast("Couldn't save settings on this device."); }
 }
 const settings = loadSettings();
+
+/* ================= Local search wiring ================= */
+// Developer-only local metrics (latency, counts). Off unless localStorage "ff.dev" is "1".
+// Log lines never contain queries, names, numbers or filenames.
+const DEV = (() => { try { return localStorage.getItem("ff.dev") === "1"; } catch (e) { return false; } })();
+const searcher = (() => {
+  try {
+    if (!window.FFSearch) return null;
+    const c = new FFSearch.SearchController({ devMetrics: DEV, devLog: DEV ? line => console.debug("[focus-friend] " + line) : null });
+    c.define("sounds", { title: "title" });
+    c.define("scenes", { title: "title" });
+    c.define("trustedContacts", { name: "name", phone: "phone" });
+    c.load("sounds", SOUNDS.map(x => ({ id: x.id, type: "sound", title: x.name, searchableFields: { title: x.name } }))
+      .concat([{ id: "random", type: "sound", title: "Random", searchableFields: { title: "Random" } }]));
+    c.load("scenes", SCENES.map(x => ({ id: x.id, type: "scene", title: x.name, searchableFields: { title: x.name } }))
+      .concat([{ id: "random", type: "scene", title: "Random", searchableFields: { title: "Random" } }]));
+    c.load("trustedContacts", settings.contacts.map(contactRecord));
+    return c;
+  } catch (e) { return null; } // search is optional: Focus works without it
+})();
+function contactRecord(c) {
+  return { id: c.id, type: "trusted-contact", title: c.name, subtitle: c.number, searchableFields: { name: c.name, phone: c.number } };
+}
+function assetRecord(a) {
+  return { id: a.id, type: a.type === "img" ? "picture" : "user-sound", title: a.name, searchableFields: { title: a.name } };
+}
+function indexAdd(collection, record) { try { searcher && searcher.add(collection, record); } catch (e) { /* never block */ } }
+function indexRemove(collection, id) { try { searcher && searcher.remove(collection, id); } catch (e) { /* never block */ } }
 
 // User pictures and sounds live in IndexedDB on this device only.
 const assets = []; // {id, type:'img'|'snd', name, blob, url}
@@ -526,7 +586,13 @@ async function loadAssets() {
   if (!db) { validateSelections(); renderSettings(); return; }
   try {
     const all = await dbTx("readonly", st => st.getAll());
-    (all || []).forEach(a => { if (a && a.blob && (a.type === "img" || a.type === "snd")) assets.push({ ...a, url: URL.createObjectURL(a.blob) }); });
+    (all || []).forEach(a => {
+      // Skip missing or corrupted media instead of failing the whole list.
+      if (!a || !a.blob || !a.id || (a.type !== "img" && a.type !== "snd")) return;
+      const item = { ...a, name: typeof a.name === "string" && a.name ? a.name : "Untitled", url: URL.createObjectURL(a.blob) };
+      assets.push(item);
+      indexAdd(item.type === "img" ? "scenes" : "sounds", assetRecord(item));
+    });
   } catch (e) { /* ignore unreadable store */ }
   validateSelections();
   renderSettings();
@@ -550,13 +616,25 @@ async function addAsset(type, blob, name) {
   }
   const a = { ...rec, url: URL.createObjectURL(blob) };
   assets.push(a); justAdded.add(id);
+  indexAdd(type === "img" ? "scenes" : "sounds", assetRecord(a));
   return a;
 }
-async function removeAsset(id) {
+async function removeAsset(id, node) {
   try { await dbTx("readwrite", st => st.delete(id)); } catch (e) { toast("Couldn't remove that file."); return; }
   const i = assets.findIndex(a => a.id === id);
   if (i >= 0) { URL.revokeObjectURL(assets[i].url); assets.splice(i, 1); }
-  validateSelections(); saveSettings(); renderSettings();
+  indexRemove(id.startsWith("img:") ? "scenes" : "sounds", id);
+  validateSelections(); saveSettings();
+  await slideOut(node);
+  renderSettings();
+}
+// Removed items slide out (immediate with reduced motion).
+function slideOut(node) {
+  return new Promise(res => {
+    if (!node || !motionOK()) return res();
+    const a = node.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateX(18px)" }], { duration: 300, easing: EASE, fill: "forwards" });
+    a.onfinish = res; a.oncancel = res;
+  });
 }
 
 /* ================= Transitions ================= */
@@ -740,8 +818,11 @@ function hideHint() { $("hint").classList.add("gone"); }
     down = false; setActive("home", false);
     if (axis) swallow = true;                // a slide never starts a session
     if (axis === "x") {
-      const projected = pos + vel * 160, base = Math.round(startPos);
-      snapTo(Math.max(base - 3, Math.min(base + 3, Math.round(projected))));
+      const base = Math.round(startPos), dragged = Math.round(pos);
+      // The drag decides; a quick flick that didn't reach the next value moves exactly one step.
+      let target = dragged;
+      if (dragged === base && Math.abs(vel) > FLICK_VELOCITY) target = base + Math.sign(vel);
+      snapTo(target);
     } else snapTo(Math.round(pos));         // a tap mid-snap still lands on a whole value
   };
   btn.addEventListener("pointerup", release);
@@ -858,6 +939,7 @@ function startSession() {
 
   startScene(sceneChoice);
   setScreen("session");
+  say(`Focus started. ${minutes} minutes.`);
   startAudio(soundChoice);
   acquireWakeLock();
   lastAnnounced = null;
@@ -911,6 +993,7 @@ function showDone(natural) {
   $("quoteText").textContent = "“" + q + "”";
   $("quoteCite").textContent = "— " + who;
   setScreen("done");
+  say(natural ? "Session complete." : "Session ended.");
   setTimeout(stopScene, 700); // keep the view on screen while it fades out
   $("doneBtn").focus({ preventScroll: true });
 }
@@ -1206,7 +1289,7 @@ function createOrb(canvas) {
         const uRes = gl.getUniformLocation(prog, "uRes"), uTime = gl.getUniformLocation(prog, "uTime"), uAct = gl.getUniformLocation(prog, "uAct");
         return {
           draw(t, a) {
-            const dpr = Math.min(1.35, window.devicePixelRatio || 1), W = Math.max(2, Math.round(canvas.clientWidth * dpr));
+            const dpr = Math.min(orbQuality, window.devicePixelRatio || 1), W = Math.max(2, Math.round(canvas.clientWidth * dpr));
             if (canvas.width !== W) { canvas.width = W; canvas.height = W; }
             gl.viewport(0, 0, W, W);
             gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
@@ -1448,6 +1531,18 @@ function stopScene() { if (visibleScreen !== "session") { sceneChoice = null; sc
 
 /* ================= One animation loop ================= */
 let dirty = true, lastFrame = 0;
+// Battery/frame budget: if animated frames keep arriving late, render the orb at a lower
+// resolution (1.35× → 1× → 0.75×). The look stays the same; the GPU does less work.
+let orbQuality = 1.35, slowFrames = 0, frameSamples = 0;
+function trackFrameCost(gap) {
+  if (gap > 200) return;               // tab switch or pause, not a slow frame
+  frameSamples++;
+  if (gap > 48) slowFrames++;          // well under the 30 fps target
+  if (frameSamples >= 90) {
+    if (slowFrames > 30 && orbQuality > 0.75) { orbQuality = orbQuality > 1 ? 1 : 0.75; }
+    frameSamples = 0; slowFrames = 0;
+  }
+}
 const T0 = performance.now();
 function markDirty() { dirty = true; }
 function frame(now) {
@@ -1465,6 +1560,7 @@ function frame(now) {
   }
   if (!animate && !dirty && !settling) return;
   if (!dirty && now - lastFrame < 33) return;
+  if (animate && lastFrame) trackFrameCost(now - lastFrame);
   lastFrame = now; const wasDirty = dirty; dirty = false;
   const t = animate ? (now - T0) / 1000 : 20;
   const onSession = visibleScreen === "session" || !$("session").hidden;
@@ -1494,10 +1590,12 @@ function renderSound() {
       [el("span", { class: "radio", "aria-hidden": "true" }), el("span", { class: "nm", text: name }), el("span", { class: "kind", text: kind })]);
     choice.dataset.id = id;
     let row = choice;
-    if (id.startsWith("snd:")) row = el("div", { class: "row-wrap" }, [choice, el("button", { class: "rm", "aria-label": "Remove " + name, text: "×", onclick: () => removeAsset(id) })]);
+    if (id.startsWith("snd:")) row = el("div", { class: "row-wrap" }, [choice, el("button", { class: "rm", "aria-label": "Remove " + name, text: "×", onclick: () => removeAsset(id, row) })]);
+    row.dataset.sid = id;
     list.appendChild(row);
     if (justAdded.delete(id)) enterItem(row);
   });
+  soundFilter.sync(opts.length);
 }
 // Update selection in place so the radio ember animates instead of the list re-rendering.
 function selectSound(id) {
@@ -1513,7 +1611,7 @@ function renderScenes() {
   const tile = (id, name, media) => {
     const b = el("button", { class: "scene-opt", role: "radio", "aria-checked": String(settings.scene === id), "aria-label": name,
       onclick: () => selectScene(id) }, [media, el("span", { class: "cap", text: name, "aria-hidden": "true" })]);
-    b.dataset.id = id; return b;
+    b.dataset.id = id; b.dataset.sid = id; return b;
   };
   SCENES.forEach(s => {
     const cv = el("canvas", { "aria-hidden": "true" });
@@ -1523,39 +1621,64 @@ function renderScenes() {
   const rnd = el("span", { class: "random-tile", "aria-hidden": "true" });
   rnd.innerHTML = '<svg viewBox="0 0 24 24"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>';
   list.appendChild(tile("random", "Random", rnd));
-  assets.filter(a => a.type === "img").forEach(a => {
+  const pics = assets.filter(a => a.type === "img");
+  pics.forEach(a => {
     const wrap = tile(a.id, a.name, el("img", { src: a.url, alt: "" }));
-    const x = el("button", { class: "x", "aria-label": "Remove " + a.name, text: "×", onclick: e => { e.stopPropagation(); removeAsset(a.id); } });
-    const holder = el("div", { style: "position:relative" }, [wrap, x]);
+    delete wrap.dataset.sid;
+    let holder;
+    const x = el("button", { class: "x", "aria-label": "Remove " + a.name, text: "×", onclick: e => { e.stopPropagation(); removeAsset(a.id, holder); } });
+    holder = el("div", { style: "position:relative" }, [wrap, x]);
+    holder.dataset.sid = a.id;
     list.appendChild(holder);
     if (justAdded.delete(a.id)) enterItem(holder);
   });
+  sceneFilter.sync(SCENES.length + 1 + pics.length);
 }
 function renderContacts() {
   const list = $("contactList"); list.textContent = "";
-  if (!settings.contacts.length) { list.appendChild(el("p", { class: "empty", text: "No Trusted Contacts yet." })); return; }
+  if (!settings.contacts.length) {
+    list.appendChild(el("div", { class: "search-empty", role: "listitem" }, [
+      el("b", { text: "No trusted contacts yet" }),
+      el("p", { text: "Add someone you want to be able to reach you during Focus." }),
+    ]));
+    contactFilter.sync(0);
+    return;
+  }
   settings.contacts.forEach(c => {
-    const row = el("div", { class: "contact" }, [
-      el("div", { class: "who" }, [el("b", { text: c.name }), el("span", { text: c.number })]),
+    let row;
+    row = el("div", { class: "contact", role: "listitem", tabindex: "-1", "aria-label": c.name + ", " + c.number }, [
+      el("div", { class: "who", "aria-hidden": "true" }, [el("b", { text: c.name }), el("span", { text: c.number })]),
       el("button", { class: "rm", "aria-label": "Remove " + c.name, text: "×", onclick: () => removeContact(c.id, row) }),
     ]);
+    row.dataset.sid = c.id;
     list.appendChild(row);
     if (justAdded.delete(c.id)) enterItem(row);
   });
+  contactFilter.sync(settings.contacts.length);
 }
 function removeContact(id, row) {
-  const done = () => { settings.contacts = settings.contacts.filter(x => x.id !== id); saveSettings(); renderContacts(); renderTrust(); };
-  if (!motionOK()) return done();
-  row.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateX(18px)" }], { duration: 300, easing: EASE, fill: "forwards" }).onfinish = done;
+  const done = () => {
+    const gone = settings.contacts.find(x => x.id === id);
+    settings.contacts = settings.contacts.filter(x => x.id !== id);
+    indexRemove("trustedContacts", id);
+    saveSettings(); renderContacts(); renderTrust();
+    if (gone) toast("Removed " + gone.name);
+    const next = $("contactQuery").hidden || $("contactSearch").hidden ? $("cName") : $("contactQuery");
+    next.focus({ preventScroll: true });
+  };
+  slideOut(row).then(done);
 }
+// Returns an error message, or null when the contact was added.
 function addContact(name, number) {
   number = String(number || "").trim(); name = String(name || "").trim() || number;
-  if (!/^[+()\d\s.-]{3,24}$/.test(number)) return "Add a name and a phone number.";
-  if (settings.contacts.some(c => c.number.replace(/\D/g, "") === number.replace(/\D/g, ""))) return "That number is already a Trusted Contact.";
+  if (!/^[+()\d\s.\-]{3,24}$/.test(number) || digitsOf(number).length < 3) return "Add a name and a phone number.";
+  const normalized = digitsOf(number);
+  if (settings.contacts.some(c => samePhone(c.normalized || digitsOf(c.number), normalized))) return "That number is already a Trusted Contact.";
   if (settings.contacts.length >= 50) return "You can add up to 50 Trusted Contacts.";
-  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
-  settings.contacts.push({ id, name: name.slice(0, 40), number });
-  justAdded.add(id);
+  const contact = { id: newId(), name: name.slice(0, 40), number, normalized };
+  settings.contacts.push(contact);
+  indexAdd("trustedContacts", contactRecord(contact));
+  justAdded.add(contact.id);
   return null;
 }
 function renderToggle(sw, label, on) {
@@ -1567,17 +1690,125 @@ function renderTrust() {
   $("contactCard").classList.toggle("dim", !settings.trustedOn);
   const n = settings.contacts.length;
   $("trustNote").textContent = settings.trustedOn
-    ? (n ? `On: ${n} ${n === 1 ? "person" : "people"} can reach you during Focus. Stored only on this device.` : "On, but no one is added yet. Stored only on this device.")
-    : "Off: everyone is blocked during Focus, except emergency alerts and repeat callers. Turn on to let these people through.";
+    ? (n ? `On: ${n} ${n === 1 ? "person" : "people"} can reach you during Focus in the Android app. Stored only on this device.`
+         : "On, but no one is added yet. Stored only on this device.")
+    : "The Trusted Contacts list is off. During Focus, only emergency alerts and repeat callers get through. Stored only on this device.";
 }
 function renderAlarm() { renderToggle($("alarmSwitch"), $("alarmState"), settings.alarmSafety); }
 function renderPerm() { $("permPill").textContent = settings.previewAck ? "Preview only" : "Not set up"; }
 function renderSettings() { renderSound(); renderScenes(); renderContacts(); renderTrust(); renderAlarm(); renderPerm(); }
 
+/* ---------- Search-as-you-type filter for one Settings list ---------- */
+// Filters the existing list in place (ranked with CSS `order`), so selection, removal and
+// radio semantics keep working. Never shown on Home. Only appears when a list is long enough.
+function createFilter(cfg) {
+  const box = $(cfg.box), input = $(cfg.input), list = $(cfg.list), empty = $(cfg.empty);
+  let announceT = 0;
+  const rows = () => Array.from(list.children).filter(n => n.dataset && n.dataset.sid);
+  const visible = () => rows().filter(r => !r.hidden && r.dataset.want !== "hidden")
+    .sort((a, b) => (+a.style.order || 0) - (+b.style.order || 0));
+  const active = () => !box.hidden && !!input.value.trim();
+
+  function show(r) {
+    const wasLeaving = r.dataset.want === "hidden";
+    r.dataset.want = "shown";
+    if (wasLeaving && r.getAnimations) r.getAnimations().forEach(x => x.cancel());
+    if (!r.hidden) return;
+    r.hidden = false;
+    enterItem(r);
+  }
+  function hide(r) {
+    if (r.hidden || r.dataset.want === "hidden") return;
+    r.dataset.want = "hidden";
+    if (!motionOK()) { r.hidden = true; return; }
+    const a = r.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateX(14px)" }], { duration: 180, easing: EASE });
+    a.onfinish = () => { if (r.dataset.want === "hidden") r.hidden = true; };
+  }
+  function renderEmpty(q) {
+    empty.textContent = "";
+    let s = null;
+    try { s = searcher.suggest({ collection: cfg.collection, query: q }); } catch (e) { s = null; }
+    if (s) {
+      const btn = el("button", { class: "dym", type: "button", text: s.text, onclick: () => { input.value = s.text; apply(); input.focus(); } });
+      empty.append(el("p", { text: `No ${cfg.plural} found for “${q.trim()}”.` }), el("p", {}, [document.createTextNode("Did you mean "), btn, document.createTextNode("?")]));
+    } else {
+      empty.append(el("b", { text: `No matching ${cfg.plural}` }), el("p", { text: "Try a different name." }));
+    }
+  }
+  function announce(msg) {
+    // Wait for a pause in typing so the screen reader isn't interrupted on every keystroke.
+    clearTimeout(announceT);
+    announceT = setTimeout(() => say(msg), 900);
+  }
+  function apply() {
+    const all = rows();
+    if (!searcher || !active()) {
+      all.forEach(r => { r.style.order = ""; show(r); });
+      empty.hidden = true; clearTimeout(announceT);
+      return;
+    }
+    let res = [];
+    try { res = searcher.search({ collection: cfg.collection, query: input.value, limit: 200 }); } catch (e) { res = []; }
+    const rank = new Map(res.map((r, i) => [r.item.id, i]));
+    let shown = 0;
+    all.forEach(r => {
+      const i = rank.get(r.dataset.sid);
+      if (i == null) hide(r); else { r.style.order = String(i); show(r); shown++; }
+    });
+    empty.hidden = shown > 0;
+    if (!shown) renderEmpty(input.value);
+    announce(shown ? `${shown} matching ${shown === 1 ? cfg.singular : cfg.plural}.` : `No matching ${cfg.plural}.`);
+  }
+  function focusRow(r) { (r.matches(cfg.focusSel) ? r : r.querySelector(cfg.focusSel) || r).focus({ preventScroll: false }); }
+
+  input.addEventListener("input", apply);
+  input.addEventListener("keydown", e => {
+    if (e.key === "ArrowDown") { const f = visible()[0]; if (f) { e.preventDefault(); focusRow(f); } }
+    else if (e.key === "Enter") { e.preventDefault(); const f = visible()[0]; if (f && active()) cfg.select(f); }
+    else if (e.key === "Escape" && input.value) { e.preventDefault(); e.stopPropagation(); input.value = ""; apply(); say(`Search cleared.`); }
+  });
+  list.addEventListener("keydown", e => {
+    if (box.hidden) return;
+    const vis = visible(), cur = vis.findIndex(r => r.contains(document.activeElement));
+    if (cur === -1) return;
+    if (e.key === "ArrowDown") { e.preventDefault(); focusRow(vis[Math.min(vis.length - 1, cur + 1)]); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); if (cur === 0) input.focus(); else focusRow(vis[cur - 1]); }
+    else if (e.key === "Enter" && cfg.enterOnRow && document.activeElement === vis[cur]) { e.preventDefault(); cfg.select(vis[cur]); }
+    else if (e.key === "Escape" && active()) { e.preventDefault(); e.stopPropagation(); input.focus(); }
+  });
+  return {
+    // Show the search box only when it helps; hiding it clears the filter.
+    sync(count) {
+      const need = !!searcher && count >= cfg.threshold;
+      box.hidden = !need;
+      if (!need && input.value) input.value = "";
+      apply();
+    },
+    apply,
+  };
+}
+// Browsing is easier for short lists: sounds and scenic views get search only past 12 options.
+// Trusted Contacts get search as soon as one exists (as specified).
+const soundFilter = createFilter({ collection: "sounds", box: "soundSearch", input: "soundQuery", list: "soundList", empty: "soundEmpty",
+  singular: "sound", plural: "sounds", threshold: 13, focusSel: ".choice", select: r => { const b = r.matches(".choice") ? r : r.querySelector(".choice"); b.click(); b.focus(); } });
+const sceneFilter = createFilter({ collection: "scenes", box: "sceneSearch", input: "sceneQuery", list: "sceneList", empty: "sceneEmpty",
+  singular: "scenic view", plural: "scenic views", threshold: 13, focusSel: ".scene-opt", select: r => { const b = r.matches(".scene-opt") ? r : r.querySelector(".scene-opt"); b.click(); b.focus(); } });
+// Selecting a contact result moves focus to that contact's actions (its Remove button).
+const contactFilter = createFilter({ collection: "trustedContacts", box: "contactSearch", input: "contactQuery", list: "contactList", empty: "contactEmpty",
+  singular: "contact", plural: "contacts", threshold: 1, focusSel: ".contact", enterOnRow: true, select: r => { const b = r.querySelector(".rm"); (b || r).focus(); } });
+
+// Polite screen-reader announcements for important state changes.
+let sayT = 0;
+function say(msg) {
+  const n = $("liveMsg"); clearTimeout(sayT);
+  n.textContent = "";
+  sayT = setTimeout(() => { n.textContent = msg; }, 40);
+}
+
 $("openSettings").onclick = () => { if (state !== "IDLE") return; renderSettings(); setScreen("settings"); $("closeSettings").focus({ preventScroll: true }); };
 $("closeSettings").onclick = () => { setScreen("home"); $("openSettings").focus({ preventScroll: true }); };
-$("alarmSwitch").onclick = () => { settings.alarmSafety = !settings.alarmSafety; saveSettings(); renderAlarm(); };
-$("trustSwitch").onclick = () => { settings.trustedOn = !settings.trustedOn; saveSettings(); renderTrust(); };
+$("alarmSwitch").onclick = () => { settings.alarmSafety = !settings.alarmSafety; saveSettings(); renderAlarm(); say("Alarm Safety " + (settings.alarmSafety ? "on." : "off.")); };
+$("trustSwitch").onclick = () => { settings.trustedOn = !settings.trustedOn; saveSettings(); renderTrust(); say("Trusted Contacts " + (settings.trustedOn ? "on." : "off.")); };
 $("reviewPerm").onclick = showPermSheet;
 $("donateBtn").onclick = () => {
   if (DONATION_LINK) return; // real link opens in the phone's browser once provided
@@ -1592,6 +1823,7 @@ $("contactForm").addEventListener("submit", e => {
   const err = addContact(name, $("cNum").value);
   if (err) { toast(err); return; }
   saveSettings(); renderContacts(); renderTrust();
+  toast("Added " + name.slice(0, 40));
   $("cName").value = ""; $("cNum").value = ""; $("cName").focus();
 });
 // Contact Picker API: returns only the contacts the person chooses (Android Chrome, top-level pages).
