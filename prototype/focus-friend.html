@@ -349,7 +349,7 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
             <div class="search-empty" id="contactEmpty" hidden></div>
             <form class="addc" id="contactForm" autocomplete="off">
               <input type="text" id="cName" placeholder="Name" aria-label="Contact name" maxlength="40">
-              <input type="tel" id="cNum" placeholder="Phone" aria-label="Phone number" maxlength="24">
+              <input type="tel" id="cNum" placeholder="Phone number" aria-label="Phone number" maxlength="24">
               <button type="submit">Add</button>
             </form>
           </div>
@@ -528,13 +528,10 @@ function saveSettings() {
 const settings = loadSettings();
 
 /* ================= Local search wiring ================= */
-// Developer-only local metrics (latency, counts). Off unless localStorage "ff.dev" is "1".
-// Log lines never contain queries, names, numbers or filenames.
-const DEV = (() => { try { return localStorage.getItem("ff.dev") === "1"; } catch (e) { return false; } })();
 const searcher = (() => {
   try {
     if (!window.FFSearch) return null;
-    const c = new FFSearch.SearchController({ devMetrics: DEV, devLog: DEV ? line => console.debug("[focus-friend] " + line) : null });
+    const c = new FFSearch.SearchController();
     c.define("sounds", { title: "title" });
     c.define("scenes", { title: "title" });
     c.define("trustedContacts", { name: "name", phone: "phone" });

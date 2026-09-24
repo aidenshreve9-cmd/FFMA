@@ -5,7 +5,6 @@ import android.animation.ValueAnimator
 import android.app.Activity
 import android.app.Application
 import android.content.Intent
-import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -16,7 +15,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.ContactsContract
-import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
@@ -31,7 +29,6 @@ import app.focusfriend.core.TrustedContactBook
 import app.focusfriend.core.search.FieldKind
 import app.focusfriend.core.search.SearchController
 import app.focusfriend.core.search.SearchInput
-import app.focusfriend.core.search.SearchOptions
 import app.focusfriend.data.MediaItem
 import app.focusfriend.data.MediaLibrary
 import app.focusfriend.data.SettingsStore
@@ -104,9 +101,7 @@ class MainActivity : Activity(), SettingsHost, FocusRuntime.Listener {
         @Suppress("DEPRECATION") run { window.statusBarColor = Color.BLACK; window.navigationBarColor = Color.BLACK }
 
         settings = store.load().validated(media.sounds().map { it.id }.toSet(), media.pictures().map { it.id }.toSet())
-        val debuggable = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-        // Developer builds may measure search locally (counts and timings only, never text).
-        search = SearchController(SearchOptions(devMetrics = debuggable), if (debuggable) { line -> Log.d("FocusFriend", line) } else null)
+        search = SearchController()
         indexEverything()
 
         root = FrameLayout(this)

@@ -17,8 +17,8 @@ internal object Fixtures {
         SearchInput(id, "trusted-contact", name, phone, mapOf("name" to name, "phone" to phone), i.toLong())
     }
 
-    fun controller(options: SearchOptions = SearchOptions(), log: ((String) -> Unit)? = null) =
-        SearchController(options, log).apply {
+    fun controller(options: SearchOptions = SearchOptions()) =
+        SearchController(options).apply {
             define("sounds", mapOf("title" to FieldKind.TITLE))
             define("scenes", mapOf("title" to FieldKind.TITLE))
             define("trustedContacts", mapOf("name" to FieldKind.NAME, "phone" to FieldKind.PHONE))
@@ -38,7 +38,6 @@ class SearchTest {
         assertEquals("", SearchNormalizer.normalizeTitle(null))
         assertEquals("obrien", SearchNormalizer.normalizeName("O'Brien"))
         assertEquals("josé", SearchNormalizer.normalizeName("José"))
-        assertEquals("jose", SearchNormalizer.fold("josé"))
         assertEquals("rain on the roof", SearchNormalizer.normalizeFilename("Rain_on-the.roof.MP3"))
         assertEquals(listOf("quantum", "nebula"), SearchNormalizer.tokenize(SearchNormalizer.normalizeTitle("Quantum Nebula")))
     }
@@ -90,10 +89,9 @@ class SearchTest {
         assertTrue(c.search("scenes", "qqqqqqq").isEmpty())
     }
 
-    @Test fun synonymsNeverOutrankDirect() {
-        val r = c.search("scenes", "galaxy")
-        assertEquals(listOf("Spiral Galaxy", "Stellar Nursery"), r.map { it.item.title })
-        assertEquals(MatchType.SYNONYM, r[1].matchType)
+    @Test fun noSynonymsOnlyDirectMatches() {
+        assertEquals(listOf("Spiral Galaxy"), titles("scenes", "galaxy"))
+        assertEquals(listOf("Quantum Nebula"), titles("scenes", "nebula"))
     }
 
     @Test fun autocomplete() {
@@ -133,18 +131,6 @@ class SearchTest {
         assertEquals(1, s.size("sounds"))
     }
 
-    @Test fun devLogsNeverContainPersonalText() {
-        val lines = mutableListOf<String>()
-        val d = Fixtures.controller(SearchOptions(devMetrics = true)) { lines += it }
-        d.search("trustedContacts", "Grandma"); d.search("trustedContacts", "7805551234"); d.search("sounds", "nothing-here")
-        assertEquals(3, d.metrics.searches); assertEquals(1, d.metrics.zeroResults)
-        val all = lines.joinToString("\n")
-        assertTrue(all.contains("search executed collection=trustedContacts resultCount=1"))
-        listOf("Grandma", "grandma", "7805551234", "780", "nothing").forEach { assertFalse(all.contains(it), "leaked $it") }
-        val quiet = mutableListOf<String>()
-        Fixtures.controller { quiet += it }.search("sounds", "pink")
-        assertTrue(quiet.isEmpty(), "metrics off by default")
-    }
 }
 
 class RelevanceTest {

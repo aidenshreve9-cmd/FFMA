@@ -14,9 +14,9 @@ cd android
 
 | Suite | Result |
 |-------|--------|
-| `tests/search` (JS) — 31 tests | **31 passed** |
+| `tests/search` (JS) — 29 tests | **29 passed** |
 | `tests/ui` (Playwright, Chromium) — 16 tests | **16 passed** |
-| `android/core` (Kotlin, JUnit 5) — 30 tests | **30 passed** |
+| `android/core` (Kotlin, JUnit 5) — 29 tests | **29 passed** |
 | `android/app` type-check against Android 15 framework (`:verify`) | **Compiles, 0 errors** (91 classes) |
 | `android/app/src/test` Robolectric DND tests — 8 tests | **Compile; not run here** (need `androidx.test` from Google's repository, which is blocked in this sandbox) |
 | Android APK build / on-device tests | **Not run here** (Android SDK host blocked); do before release |
@@ -25,9 +25,9 @@ cd android
 
 **Unit (search, both platforms):** normalization pipeline, names/filenames/phone normalizers,
 tokenization, phone variants, bounded distance, ranking order, token prefix, exact match, fuzzy,
-did-you-mean (only on zero results; no weak/ambiguous guesses), synonyms below direct matches,
+did-you-mean (only on zero results; no weak/ambiguous guesses), no synonyms (direct matches only),
 autocomplete, empty/invalid queries, limits, deterministic ties, incremental add/remove,
-corrupted records, record shape, redacted dev logs, metrics off by default.
+corrupted records, record shape.
 
 **Unit (Kotlin core):** durations loop both ways; slide axis; a flick is exactly one step; fixed
 end time; rounding up; "1 min" to the last second; accurate after leaving and returning; finish runs
@@ -48,8 +48,8 @@ rules again" / "Go back"; exact session status; footer; early end → "Session e
 via the fixed end time; Done resets to 15; Settings order and defaults; exact Alarm Safety wording;
 contact search (ranking, phone variants, did-you-mean, duplicates, normalized storage); search
 keyboard (↓ ↑ Enter Escape); removal updates the index; sound search appears past 12 and handles
-`pnik`; persistence (duration never saved); reduced motion; no network except fonts and redacted
-dev logs; search failure never prevents Focus.
+`pnik`; persistence (duration never saved); reduced motion; no network except fonts and no names
+or numbers in the console; search failure never prevents Focus.
 
 **Robolectric (Android DND layer, written):** no access → nothing silenced, nothing created; the
 rule uses the spec policy (calls/messages none, repeat callers, alarms, media, visual effects hidden);

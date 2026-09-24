@@ -15,13 +15,11 @@ and any search data (the in-memory index). Nothing is uploaded.
 
 ## Never sent, never logged
 Contact names, phone numbers, filenames, search queries, pictures and sounds.
-Developer metrics are counts and timings only:
+Search keeps no developer logs or timings at all. The only log lines in the app are Android's
+"could not start/end Focus rule" warnings, which name the error type and nothing else.
 
-- Bad: `Search executed: Grandma 7805551234`
-- Good: `search executed collection=trustedContacts resultCount=4 ms=0.21`
-
-Verified by tests in both implementations (the log lines are checked for names and digits), and by
-a browser UI test that records every network request and fails on anything other than fonts.
+Verified by a browser UI test that records every network request and every console line, and fails
+on any request other than fonts or any console line containing a name or number.
 
 ## Security measures
 - Imported files are validated (type, size, playable audio / decodable image) and copied into

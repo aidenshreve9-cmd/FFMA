@@ -23,8 +23,8 @@ UI → SearchController → SearchNormalizer → SearchIndex → SearchRanker �
 **Normalization:** raw → Unicode NFKC → lowercase → trim → collapse whitespace → safe punctuation →
 normalized. `"  Quantum-Nebula  " → "quantum nebula"`. Separate normalizers for titles, names
 (conservative: apostrophes join, accents kept as written), filenames (extension dropped) and phone
-numbers (digits only). An accent-folded twin is used for matching only ("jose" finds "José").
-No stemming or lemmatization.
+numbers (digits only). Accents are matched as written ("josé" finds "José"; "jose" does not).
+No stemming, lemmatization or synonyms.
 
 **Tokenization:** `"Quantum Nebula" → ["quantum", "nebula"]`. `neb` finds Quantum Nebula;
 `quantum nebula` is an exact (top) match.
@@ -45,7 +45,6 @@ person's own formatting is what's shown.
 | Substring | 30 |
 | Partial phone digits | 25 |
 | Fuzzy | 10–24 |
-| Synonym | 12 |
 
 Ties break by match strength, shorter title, alphabetical, id — so results are deterministic.
 Scores and match types are internal and never shown.
@@ -53,8 +52,7 @@ Scores and match types are internal and never shown.
 **Fuzzy:** bounded optimal-string-alignment distance (Levenshtein + adjacent swaps). 1–4 character
 tokens: no fuzzy results. 5–8: one edit. 9+: two edits. Weak matches are never returned.
 
-**Synonyms:** tiny bidirectional dictionary (noise↔sound, galaxy↔stellar, nebula↔cosmic,
-contact↔person), always below direct matches.
+**No synonyms:** only what you type is matched (`galaxy` finds Spiral Galaxy, not Stellar Nursery).
 
 **Autocomplete:** the list itself narrows as you type (`pink` → Pink Noise, `gran` → Grandma, Grandpa).
 
@@ -88,10 +86,8 @@ every keystroke. Results fade in, removed results slide out; immediate with redu
 
 ## Privacy
 
-No search history, no query storage, no CTR/abandonment metrics, no profiles. Developer builds may
-measure latency, result count, zero-result rate and fuzzy usage **locally**; log lines contain
-counts only (`search executed collection=trustedContacts resultCount=4`), never names, numbers,
-filenames or queries. Browser: enable with `localStorage["ff.dev"] = "1"`. Android: debug builds.
+No search history, no query storage, no CTR/abandonment metrics, no profiles, and no logging:
+search writes nothing to the console or the Android log, in any build.
 
 ## Relevance evaluation (offline, deterministic)
 

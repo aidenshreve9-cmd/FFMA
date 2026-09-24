@@ -5,15 +5,14 @@ package app.focusfriend.core.search
  *
  *   UI → SearchController → SearchNormalizer → SearchIndex → SearchRanker → results
  *
- * No network, no history, no telemetry. Queries are never stored. Optional developer
- * metrics are numbers only (latency, counts) and never leave the device.
+ * No network, no history, no telemetry, no logging. Queries are never stored.
  */
 
 enum class FieldKind { TITLE, NAME, FILENAME, PHONE }
 
 /** Match strengths in the spec's ranking order (higher rank wins ties). */
 enum class MatchType(val rank: Int) {
-    EXACT(7), EXACT_TOKEN(6), PHONE_FULL(6), PREFIX(5), TOKEN_PREFIX(4), SUBSTRING(3), PHONE_PARTIAL(2), FUZZY(1), SYNONYM(0)
+    EXACT(7), EXACT_TOKEN(6), PHONE_FULL(6), PREFIX(5), TOKEN_PREFIX(4), SUBSTRING(3), PHONE_PARTIAL(2), FUZZY(1)
 }
 
 /**
@@ -32,16 +31,7 @@ object Scores {
     const val PHONE_PARTIAL = 25
     const val FUZZY_MAX = 24
     const val FUZZY_MIN = 10
-    const val SYNONYM = 12
 }
-
-/** Small bidirectional synonym dictionary. Synonyms always score below direct matches. */
-val SYNONYMS: Map<String, List<String>> = mapOf(
-    "noise" to listOf("sound"), "sound" to listOf("noise"),
-    "galaxy" to listOf("stellar"), "stellar" to listOf("galaxy"),
-    "nebula" to listOf("cosmic"), "cosmic" to listOf("nebula"),
-    "contact" to listOf("person"), "person" to listOf("contact"),
-)
 
 /** What callers hand to the index. */
 data class SearchInput(
@@ -68,8 +58,8 @@ class SearchRecord internal constructor(
 
 internal class PreparedField(
     val kind: FieldKind,
-    val folded: String,
-    val foldedTokens: List<String>,
+    val norm: String,
+    val tokens: List<String>,
     val digits: String,
 )
 
@@ -82,8 +72,6 @@ data class SearchOptions(
     /** A: exact > prefix > substring > fuzzy.  B (default): adds exact-token and token-prefix tiers. */
     val ranking: Ranking = Ranking.B,
     val fuzzy: Boolean = true,
-    val synonyms: Boolean = true,
-    val devMetrics: Boolean = false,
 )
 
 internal class PreparedQuery(val raw: String, val norm: String, val tokens: List<String>, val digits: String, val phoneLike: Boolean)
@@ -91,7 +79,7 @@ internal class PreparedQuery(val raw: String, val norm: String, val tokens: List
 internal fun prepareQuery(raw: String?): PreparedQuery? {
     val trimmed = raw?.trim().orEmpty()
     if (trimmed.isEmpty()) return null
-    val norm = SearchNormalizer.fold(SearchNormalizer.normalizeTitle(trimmed))
+    val norm = SearchNormalizer.normalizeTitle(trimmed)
     val tokens = SearchNormalizer.tokenize(norm)
     val phoneLike = SearchNormalizer.isPhoneLike(trimmed)
     if (tokens.isEmpty() && !phoneLike) return null
@@ -113,10 +101,10 @@ fun createRecord(input: SearchInput, kinds: Map<String, FieldKind>): SearchRecor
             continue
         }
         val norm = SearchNormalizer.normalize(kind, raw)
-        val folded = SearchNormalizer.fold(norm)
+        val fieldTokens = SearchNormalizer.tokenize(norm)
         normalized[key] = norm
-        tokens += SearchNormalizer.tokenize(norm)
-        prepared += PreparedField(kind, folded, SearchNormalizer.tokenize(folded), "")
+        tokens += fieldTokens
+        prepared += PreparedField(kind, norm, fieldTokens, "")
     }
     return SearchRecord(input.id, input.type, input.title, input.subtitle, input.searchableFields.toMap(), normalized, tokens, input.createdAt, prepared)
 }
@@ -143,8 +131,8 @@ class SearchRanker(private val options: SearchOptions) {
             if (q.digits.length >= 3 && f.digits.contains(q.digits)) return Hit(Scores.PHONE_PARTIAL, MatchType.PHONE_PARTIAL)
             return null
         }
-        val text = f.folded
-        val toks = f.foldedTokens
+        val text = f.norm
+        val toks = f.tokens
         if (text.isEmpty()) return null
         if (text == q.norm) return Hit(Scores.EXACT, MatchType.EXACT)
         val b = options.ranking == Ranking.B
@@ -171,16 +159,6 @@ class SearchRanker(private val options: SearchOptions) {
                 total += best; edited = true
             }
             if (ok && edited) return Hit(maxOf(Scores.FUZZY_MIN, Scores.FUZZY_MAX - (total - 1) * 7), MatchType.FUZZY)
-        }
-        if (options.synonyms) {
-            var viaSyn = false
-            var ok = true
-            for (t in q.tokens) {
-                if (toks.any { it.startsWith(t) }) continue
-                val syns = SYNONYMS[t]
-                if (syns != null && syns.any { it in toks }) viaSyn = true else { ok = false; break }
-            }
-            if (ok && viaSyn) return Hit(Scores.SYNONYM, MatchType.SYNONYM)
         }
         return null
     }
@@ -235,32 +213,14 @@ class SearchIndex {
     fun get(name: String, id: String) = collections[name]?.records?.get(id)
 }
 
-/** Developer-only local metrics: numbers only, never text. Never transmitted. */
-class SearchMetrics {
-    var searches = 0; private set
-    var zeroResults = 0; private set
-    var fuzzyHits = 0; private set
-    var totalMs = 0.0; private set
-    var maxMs = 0.0; private set
-    internal fun record(ms: Double, results: List<SearchResult>) {
-        searches++; totalMs += ms; if (ms > maxMs) maxMs = ms
-        if (results.isEmpty()) zeroResults++
-        if (results.any { it.matchType == MatchType.FUZZY }) fuzzyHits++
-    }
-}
-
 data class Suggestion(val item: SearchRecord, val text: String)
 
 /**
  * Entry point for the UI. Never throws: a search problem returns nothing and can
  * never stop a Focus session from starting.
  */
-class SearchController(
-    val options: SearchOptions = SearchOptions(),
-    private val devLog: ((String) -> Unit)? = null,
-) {
+class SearchController(val options: SearchOptions = SearchOptions()) {
     val index = SearchIndex()
-    val metrics = SearchMetrics()
     private val ranker = SearchRanker(options)
     private val cache = LinkedHashMap<String, List<SearchResult>>()
 
@@ -274,7 +234,6 @@ class SearchController(
 
     /** search(collection, query, limit) → [(item, score, matchType)]. Score/matchType are internal. */
     fun search(collection: String, query: String?, limit: Int = options.limit): List<SearchResult> {
-        val start = System.nanoTime()
         return try {
             val q = prepareQuery(query) ?: return emptyList()
             val lim = if (limit > 0) minOf(limit, 200) else options.limit
@@ -286,10 +245,8 @@ class SearchController(
             val results = if (found.size > lim) found.subList(0, lim).toList() else found
             if (cache.size > 24) cache.clear()
             cache[key] = results
-            measure(collection, start, results)
             results
         } catch (e: RuntimeException) {
-            log("search failed collection=$collection error=${e.javaClass.simpleName}")
             emptyList()
         }
     }
@@ -306,7 +263,7 @@ class SearchController(
             var tie = false
             if (bound > 0) for (record in index.records(collection)) for (f in record.fields) {
                 if (f.kind == FieldKind.PHONE) continue
-                for (cand in f.foldedTokens + f.folded) {
+                for (cand in f.tokens + f.norm) {
                     val d = minOf(ranker.distance(q.norm, cand, bound), ranker.distance(compact, cand, bound))
                     if (d > bound) continue
                     if (d < bestDist) { bestDist = d; best = record; tie = false }
@@ -316,13 +273,4 @@ class SearchController(
             if (best == null || tie) null else Suggestion(best, best.title)
         }
     } catch (e: RuntimeException) { null }
-
-    private fun measure(collection: String, start: Long, results: List<SearchResult>) {
-        if (!options.devMetrics) return
-        val ms = (System.nanoTime() - start) / 1e6
-        metrics.record(ms, results)
-        // Counts only. Never the query, names, numbers or filenames.
-        log("search executed collection=$collection resultCount=${results.size} ms=${"%.2f".format(ms)}")
-    }
-    private fun log(line: String) { if (options.devMetrics) try { devLog?.invoke(line) } catch (_: RuntimeException) { } }
 }

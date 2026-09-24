@@ -17,10 +17,23 @@ Items marked **Needs your OK** are choices only you can make.
 | C7 | Search "Enter: select result" — a Trusted Contact has no single obvious action. | Enter on a contact result moves focus to that contact's **Remove** action. Enter on a sound or view result selects it. |
 | C8 | Search "Escape: clear or close search" vs. "Escape closes sheets/dialogs". | In a search field with text, the first Escape clears it; the next Escape closes Settings. Sheets always close first. |
 | C9 | "Only fonts may load from the internet." | Browser: Google Fonts only. Android: fonts are **bundled** (OFL), so the Android app declares no internet permission at all — stricter than required. |
-| C10 | Android Do Not Disturb can let through "starred" or "all" contacts, not an app-specific list. | Focus temporarily **stars** each Trusted Contact that isn't starred yet and **un-stars exactly those** afterwards (recorded before changing, restored after a crash or reboot). Consequences, disclosed in Settings: people you've *already* starred also get through; numbers typed in that aren't in the phone's Contacts can't be recognised; contacts read/write permission is needed. **Needs your OK.** The alternative — temporarily un-starring your other starred contacts — would edit far more of your data, so it wasn't done. |
+| C10 | Android Do Not Disturb can let through "starred" or "all" contacts, not an app-specific list. | Focus temporarily **stars** each Trusted Contact that isn't starred yet and **un-stars exactly those** afterwards (recorded before changing, restored after a crash or reboot). Consequences, disclosed in Settings: people you've *already* starred also get through; numbers typed in that aren't in the phone's Contacts can't be recognised; contacts read/write permission is needed. Kept (see *Your choices*). The alternative — temporarily un-starring your other starred contacts — would edit far more of your data, so it wasn't done. |
 | C11 | "Emergency alerts always allowed." | Wireless emergency alerts bypass Do Not Disturb at the system level; the app can't block or unblock them and never claims otherwise. |
 | C12 | Repeat-caller window "15 minutes". | That is Android's own system definition; the app turns the category on but can't change the window. |
 | C13 | The Android status line. Chapter 3 only fixes the browser's text. | Android shows "Notifications silenced · Emergency calls unaffected" **only** when its rule is really active; otherwise "Do Not Disturb is off · notifications not silenced". |
+
+## Your choices (24 Sep 2026)
+
+Changes the spec didn't require were put to you. What you chose:
+
+| Change | Your choice | Result |
+|--------|-------------|--------|
+| Search synonyms (noise↔sound, galaxy↔stellar, …) | **Remove** | Removed from both apps. Only what you type is matched. |
+| Accent matching ("jose" finds "José") | **Remove** | Removed. Names match as written. |
+| Developer timing logs | **Remove** | Removed. Search does no logging in any build. |
+| "Phone" placeholder in the contact form | **Undo** | Back to "Phone number". |
+| Android extras: bundled fonts / no internet, backups off, notification permission ask | No preference | Kept. |
+| Trusted Contacts on Android via temporary starring (C10) | No preference | Kept. |
 
 ## Choices made so the app works (carried over, still open)
 

@@ -15,11 +15,10 @@ test("normalization pipeline: NFKC, lowercase, trim, collapse, punctuation", () 
   assert.equal(S.normalizeTitle(42), "");
 });
 
-test("names are normalized conservatively; accents kept, folded twin used only for matching", () => {
+test("names are normalized conservatively; accents kept", () => {
   assert.equal(S.normalizeName("O'Brien"), "obrien");
   assert.equal(S.normalizeName("Mary-Jane  Smith"), "mary jane smith");
   assert.equal(S.normalizeName("José"), "josé");
-  assert.equal(S.fold("josé"), "jose");
 });
 
 test("filenames drop extension and separators", () => {
@@ -98,15 +97,10 @@ test("weak fuzzy matches are not returned", () => {
   assert.deepEqual(c.search({ collection: "sounds", query: "purple" }), []);
 });
 
-test("synonyms never outrank direct matches", () => {
+test("no synonyms: only direct matches are returned", () => {
   const c = controller();
-  const r = c.search({ collection: "scenes", query: "galaxy" });
-  assert.deepEqual(titles(r), ["Spiral Galaxy", "Stellar Nursery"]);
-  assert.equal(r[1].matchType, "synonym");
-  assert.ok(r[1].score < r[0].score);
-  const n = c.search({ collection: "scenes", query: "nebula" });
-  assert.equal(n[0].item.title, "Quantum Nebula");
-  assert.equal(n[1].item.title, "Cosmic Dust");
+  assert.deepEqual(titles(c.search({ collection: "scenes", query: "galaxy" })), ["Spiral Galaxy"]);
+  assert.deepEqual(titles(c.search({ collection: "scenes", query: "nebula" })), ["Quantum Nebula"]);
 });
 
 test("autocomplete returns local records", () => {
@@ -175,26 +169,6 @@ test("generic record shape", () => {
   ["id", "type", "title", "subtitle", "searchableFields", "normalizedFields", "tokens", "createdAt"].forEach(k => assert.ok(k in r, k));
   assert.deepEqual(r.tokens, ["pink", "noise"]);
   assert.equal(r.normalizedFields.title, "pink noise");
-});
-
-test("dev metrics are local and never contain personal text", () => {
-  const lines = [];
-  const c = controller({ devMetrics: true, devLog: l => lines.push(l) });
-  c.search({ collection: "trustedContacts", query: "Grandma" });
-  c.search({ collection: "trustedContacts", query: "7805551234" });
-  c.search({ collection: "sounds", query: "nothing-here" });
-  assert.equal(c.metrics.searches, 3);
-  assert.equal(c.metrics.zeroResults, 1);
-  const all = lines.join("\n");
-  assert.match(all, /search executed collection=trustedContacts resultCount=1/);
-  ["Grandma", "grandma", "7805551234", "780", "nothing"].forEach(s => assert.ok(!all.includes(s), "leaked " + s));
-});
-
-test("metrics are off by default", () => {
-  const lines = [];
-  const c = controller({ devLog: l => lines.push(l) });
-  c.search({ collection: "sounds", query: "pink" });
-  assert.equal(lines.length, 0);
 });
 
 test("built-in sounds all searchable by name", () => {

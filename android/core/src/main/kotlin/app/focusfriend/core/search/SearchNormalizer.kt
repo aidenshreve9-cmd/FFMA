@@ -13,7 +13,6 @@ import java.util.Locale
 object SearchNormalizer {
     private val PUNCT = Regex("""[‐-―−\-_./\\,;:!?()\[\]{}"“”«»`~|+*&^%$#@=<>]+""")
     private val APOS = Regex("""['’ʼ]""")
-    private val MARKS = Regex("""\p{Mn}+""")
     private val WS = Regex("""\s+""")
     private val EXTENSION = Regex("""\.[a-z0-9]{1,5}$""")
     private val NON_DIGITS = Regex("""\D+""")
@@ -33,9 +32,6 @@ object SearchNormalizer {
     /** Filenames: drop a trailing extension, then treat _ - . as spaces. */
     fun normalizeFilename(s: String?): String =
         collapse(base(s).replace(EXTENSION, "").replace(APOS, "").replace(PUNCT, " "))
-
-    /** Accent-folded twin used only for matching ("jose" finds "José"); never displayed. */
-    fun fold(s: String): String = Normalizer.normalize(s, Normalizer.Form.NFD).replace(MARKS, "")
 
     fun tokenize(normalized: String): List<String> =
         if (normalized.isEmpty()) emptyList() else normalized.split(' ').filter { it.isNotEmpty() }

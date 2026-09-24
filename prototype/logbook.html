@@ -103,7 +103,7 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:v
   <div class="stats" role="list">
     <div role="listitem"><b>3.0</b><span>spec implemented</span></div>
     <div role="listitem"><b>2</b><span>platforms: browser + Android</span></div>
-    <div role="listitem"><b>77</b><span>automated tests passing</span></div>
+    <div role="listitem"><b>74</b><span>automated tests passing</span></div>
     <div role="listitem"><b>13</b><span>spec conflicts resolved</span></div>
   </div>
 
@@ -264,6 +264,20 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:v
         </ul>
       </div>
     </li>
+
+    <li class="entry release">
+      <div class="meta"><time datetime="2026-09-24T10:50Z">24 Sep · 10:50</time><span class="tag rel">Your choices</span></div>
+      <h3>Unrequested extras: removed or kept</h3>
+      <p class="ask">You asked to choose which changes the spec didn't require.</p>
+      <div class="card">
+        <ul>
+          <li><b>Removed from both apps:</b> search synonyms ("galaxy" no longer finds Stellar Nursery), accent matching ("jose" no longer finds "José") and developer timing logs. Search now logs nothing in any build.</li>
+          <li><b>Undone:</b> the contact form's number field says "Phone number" again.</li>
+          <li><b>Kept (no preference given):</b> Android's bundled fonts with no internet permission, backups off, the one-time notification permission ask, and Trusted Contacts via temporary starring.</li>
+          <li><b>Checked:</b> 29 search tests, 16 browser UI tests and 29 Kotlin tests pass; the Android app still compiles against Android 15.</li>
+        </ul>
+      </div>
+    </li>
   </ol>
 
   <h2>Decisions you made</h2>
@@ -276,6 +290,10 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:v
     <div class="row"><span class="state ok">Approved</span><div><b>8 cosmic scenic views and 8 noise colors</b><p>Settles the spec's open question about which scenic views to include.</p></div></div>
     <div class="row"><span class="state ok">Approved</span><div><b>Removed the Home title and the Settings footer</b></div></div>
     <div class="row"><span class="state ok">Approved</span><div><b>V3.0 specification</b><p>Private local search in Settings, and a native Android app with real Do Not Disturb.</p></div></div>
+    <div class="row"><span class="state ok">Removed</span><div><b>Search synonyms, accent matching, developer timing logs</b><p>Search matches only what you type, and logs nothing.</p></div></div>
+    <div class="row"><span class="state ok">Undone</span><div><b>"Phone" placeholder</b><p>Back to "Phone number".</p></div></div>
+    <div class="row"><span class="state ok">Kept</span><div><b>Android extras</b><p>Bundled fonts with no internet permission, backups off, one-time notification permission ask. You gave no preference.</p></div></div>
+    <div class="row"><span class="state ok">Kept</span><div><b>How Trusted Contacts get through on Android</b><p>Focus stars them for the session and un-stars them after. People you already starred also get through, and numbers not saved in Contacts can't be recognised. You gave no preference.</p></div></div>
   </div>
 
   <h2>Choices waiting for your OK</h2>
@@ -288,7 +306,6 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:v
     <div class="row"><span class="state open">Open</span><div><b>Home helpers</b><p>The step dots were replaced by the dial arc. The "Slide the button to change the time" hint is still shown.</p></div></div>
     <div class="row"><span class="state open">Open</span><div><b>Done screen extras</b><p>The quote's author is shown, and ending early says "Session ended".</p></div></div>
     <div class="row"><span class="state open">Open</span><div><b>Buy Me a Coffee link</b><p>Not provided yet. The button opens a sheet saying so.</p></div></div>
-    <div class="row"><span class="state open">Open</span><div><b>How Trusted Contacts get through on Android</b><p>Android can only let "starred" contacts through, so Focus stars them for the session and un-stars them after. People you already starred also get through, and numbers not saved in Contacts can't be recognised.</p></div></div>
     <div class="row"><span class="state open">Open</span><div><b>When the contacts search appears</b><p>Now: as soon as one contact exists, as the spec says. It could wait until, say, 6 contacts.</p></div></div>
     <div class="row"><span class="state open">Open</span><div><b>Quote wording</b><p>Each quote still needs checking against a public-domain translation before release.</p></div></div>
   </div>
@@ -307,7 +324,7 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:v
   <h2>Next time</h2>
   <div class="card"><ul>
     <li>Build the Android app in Android Studio (open the <code>android/</code> folder) and run the device checklist in <code>docs/TESTING.md</code>.</li>
-    <li>Answer the open choices above, especially how Trusted Contacts get through on Android.</li>
+    <li>Answer the open choices above, if any of them should change.</li>
     <li>Try the browser preview's new search: add a few Trusted Contacts and search by name or any phone format.</li>
   </ul></div>
 

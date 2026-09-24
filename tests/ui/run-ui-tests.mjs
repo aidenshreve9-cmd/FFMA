@@ -41,7 +41,6 @@ async function open(opts = {}) {
   page.on("console", m => { logs.push(m.text()); if (m.type() === "error" && !/fonts|ERR_CERT|net::/.test(m.text())) errors.push(m.text()); });
   page.on("request", r => requests.push(r.url()));
   if (opts.blockSearch) await page.route("**/search.js", r => r.abort());
-  if (opts.dev) await ctx.addInitScript(() => localStorage.setItem("ff.dev", "1"));
   await page.goto(BASE);
   await page.waitForTimeout(400);
   return { ctx, page, errors, requests, logs };
@@ -316,17 +315,15 @@ await test("reduced motion: state changes are immediate, no running animations",
 });
 
 /* ================= Privacy ================= */
-await test("privacy: no network except fonts; dev logs carry counts only", async () => {
-  const { page, ctx, requests, logs } = await open({ dev: true });
+await test("privacy: no network except fonts; nothing personal logged", async () => {
+  const { page, ctx, requests, logs } = await open();
   await openSettings(page);
   await addContact(page, "Grandma", "+1 780 555 1234");
   await page.fill("#contactQuery", "Grandma"); await page.waitForTimeout(300);
   await page.fill("#contactQuery", "7805551234"); await page.waitForTimeout(300);
   const external = requests.filter(u => !u.startsWith("http://127.0.0.1") && !/^https:\/\/fonts\.(googleapis|gstatic)\.com\//.test(u) && !u.startsWith("data:") && !u.startsWith("blob:"));
   eq(external, [], "unexpected requests");
-  const dev = logs.filter(l => l.startsWith("[focus-friend]"));
-  assert(dev.length > 0, "dev metrics logged locally");
-  assert(dev.every(l => !/grandma|7805551234|780 555/i.test(l)), "logs must not contain names or numbers");
+  assert(logs.every(l => !/grandma|7805551234|780 555/i.test(l)), "console must not contain names or numbers");
   await ctx.close();
 });
 

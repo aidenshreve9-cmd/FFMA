@@ -3,8 +3,8 @@
  *
  * Private, deterministic, in-memory search for small on-device collections
  * (built-in sounds and scenic views, user sounds and pictures, Trusted Contacts).
- * No network, no history, no telemetry: queries never leave this module and are
- * never stored. Dev metrics (latency, counts) stay in memory and contain no text.
+ * No network, no history, no telemetry, no logging: queries never leave this module
+ * and are never stored.
  *
  *   UI -> SearchController -> SearchNormalizer -> SearchIndex -> SearchRanker -> results
  *
@@ -32,24 +32,14 @@
     phonePartial: 25,
     fuzzyMax: 24,
     fuzzyMin: 10,
-    synonym: 12,
   });
 
-  // Small bidirectional synonym dictionary. Synonyms score below every direct match.
-  const SYNONYMS = Object.freeze({
-    noise: ["sound"], sound: ["noise"],
-    galaxy: ["stellar"], stellar: ["galaxy"],
-    nebula: ["cosmic"], cosmic: ["nebula"],
-    contact: ["person"], person: ["contact"],
-  });
-
-  const DEFAULTS = Object.freeze({ limit: 10, ranking: "B", fuzzy: true, synonyms: true });
+  const DEFAULTS = Object.freeze({ limit: 10, ranking: "B", fuzzy: true });
 
   /* ======================= SearchNormalizer ======================= */
   // Raw -> Unicode NFKC -> lowercase -> trim -> collapse whitespace -> safe punctuation -> normalized.
   const PUNCT = /[\u2010-\u2015\u2212\-_./\\,;:!?()[\]{}"\u201c\u201d\u00ab\u00bb`~|+*&^%$#@=<>]+/g;
   const APOS = /['\u2019\u02bc]/g;
-  const MARKS = /[\u0300-\u036f]/g;
   const WS = /\s+/g;
 
   function base(s) {
@@ -68,10 +58,6 @@
   function normalizeFilename(s) {
     const b = base(s).replace(/\.[a-z0-9]{1,5}$/i, "");
     return collapse(b.replace(APOS, "").replace(PUNCT, " "));
-  }
-  // Accent-folded twin used only for matching ("jose" finds "Jos\u00e9"); never displayed.
-  function fold(s) {
-    try { return s.normalize("NFD").replace(MARKS, ""); } catch (e) { return s; }
   }
   function tokenize(normalized) { return normalized ? normalized.split(" ").filter(Boolean) : []; }
 
@@ -144,15 +130,14 @@
       if (kind === "phone") {
         const digits = normalizePhone(raw);
         normalizedFields[key] = digits;
-        if (digits) prepared.push({ key, kind, norm: "", folded: "", toks: [], foldedToks: [], digits });
+        if (digits) prepared.push({ key, kind, norm: "", toks: [], digits });
         return;
       }
       const norm = (NORMALIZERS[kind] || normalizeTitle)(raw);
-      const folded = fold(norm);
       const toks = tokenize(norm);
       normalizedFields[key] = norm;
       toks.forEach(t => tokens.push(t));
-      prepared.push({ key, kind, norm, folded, toks, foldedToks: folded === norm ? toks : tokenize(folded), digits: "" });
+      prepared.push({ key, kind, norm, toks, digits: "" });
     });
     const record = {
       id: String(input.id),
@@ -175,15 +160,14 @@
     const trimmed = raw.trim();
     if (!trimmed) return null;
     const norm = normalizeTitle(trimmed);
-    const folded = fold(norm);
-    const toks = tokenize(folded);
+    const toks = tokenize(norm);
     const phoneLike = isPhoneLike(trimmed);
     if (!toks.length && !phoneLike) return null;
-    return { raw: trimmed, norm: folded, toks, digits: phoneLike ? normalizePhone(trimmed) : "", phoneLike };
+    return { raw: trimmed, norm, toks, digits: phoneLike ? normalizePhone(trimmed) : "", phoneLike };
   }
 
   /* ======================= SearchRanker ======================= */
-  const MATCH_RANK = { exact: 7, exactToken: 6, phoneFull: 6, prefix: 5, tokenPrefix: 4, substring: 3, phonePartial: 2, fuzzy: 1, synonym: 0 };
+  const MATCH_RANK = { exact: 7, exactToken: 6, phoneFull: 6, prefix: 5, tokenPrefix: 4, substring: 3, phonePartial: 2, fuzzy: 1 };
 
   function hasToken(list, t) { for (let i = 0; i < list.length; i++) if (list[i] === t) return true; return false; }
   function hasTokenPrefix(list, t) { for (let i = 0; i < list.length; i++) if (list[i].startsWith(t)) return true; return false; }
@@ -195,7 +179,7 @@
       if (q.digits.length >= 3 && f.digits.indexOf(q.digits) !== -1) return { score: SCORE.phonePartial, matchType: "phonePartial" };
       return null;
     }
-    const text = f.folded, toks = f.foldedToks;
+    const text = f.norm, toks = f.toks;
     if (!text) return null;
     if (text === q.norm) return { score: SCORE.exact, matchType: "exact" };
     const B = opts.ranking !== "A";
@@ -225,17 +209,6 @@
         const score = Math.max(SCORE.fuzzyMin, SCORE.fuzzyMax - (total - 1) * 7);
         return { score, matchType: "fuzzy" };
       }
-    }
-    // Synonyms: each query token must match directly or through the dictionary.
-    if (opts.synonyms) {
-      let viaSyn = false, ok = true;
-      for (let i = 0; i < q.toks.length && ok; i++) {
-        const t = q.toks[i];
-        if (hasTokenPrefix(toks, t)) continue;
-        const syns = SYNONYMS[t];
-        if (syns && syns.some(s => hasToken(toks, s))) viaSyn = true; else ok = false;
-      }
-      if (ok && viaSyn) return { score: SCORE.synonym, matchType: "synonym" };
     }
     return null;
   }
@@ -304,8 +277,6 @@
       this.index = new SearchIndex();
       this.options = Object.assign({}, DEFAULTS, options || {});
       this._cache = new Map(); // key: collection|version|query|limit -> results (small, cleared on change)
-      this.metrics = { enabled: !!(options && options.devMetrics), searches: 0, zeroResults: 0, fuzzyHits: 0, totalMs: 0, maxMs: 0 };
-      this._log = options && typeof options.devLog === "function" ? options.devLog : null;
     }
     define(name, kinds) { this.index.define(name, kinds); return this; }
     load(name, items) { this.index.load(name, items); this._cache.clear(); }
@@ -316,7 +287,6 @@
     // search({ collection, query, limit }) -> [{ item, score, matchType }]
     // score and matchType are internal: never show them to people.
     search(req) {
-      const t0 = now();
       let results = [];
       try {
         const collection = req && req.collection;
@@ -337,11 +307,9 @@
         results = found.slice(0, limit);
         if (this._cache.size > 24) this._cache.clear();
         this._cache.set(key, results);
-        this._measure(collection, t0, results);
         return results;
       } catch (e) {
         // Search must never break the app: report nothing, keep going.
-        this._devLog("search failed collection=" + (req && req.collection) + " error=" + (e && e.name));
         return [];
       }
     }
@@ -360,7 +328,7 @@
         c.records.forEach(record => {
           record._fields.forEach(f => {
             if (f.kind === "phone") return;
-            const cands = f.foldedToks.concat([f.folded]);
+            const cands = f.toks.concat([f.norm]);
             cands.forEach(cand => {
               const bound = suggestBound(qtext.length);
               if (!bound) return;
@@ -376,26 +344,14 @@
         return { item: best, text: best.title };
       } catch (e) { return null; }
     }
-
-    _measure(collection, t0, results) {
-      if (!this.metrics.enabled) return;
-      const ms = now() - t0, m = this.metrics;
-      m.searches++; m.totalMs += ms; if (ms > m.maxMs) m.maxMs = ms;
-      if (!results.length) m.zeroResults++;
-      if (results.some(r => r.matchType === "fuzzy")) m.fuzzyHits++;
-      // Counts only. Never the query, names, numbers or filenames.
-      this._devLog("search executed collection=" + collection + " resultCount=" + results.length + " ms=" + ms.toFixed(2));
-    }
-    _devLog(line) { if (this._log && this.metrics.enabled) { try { this._log(line); } catch (e) { /* ignore */ } } }
   }
 
   function clampLimit(v, d) { const n = Number(v); return Number.isFinite(n) && n > 0 ? Math.min(200, Math.floor(n)) : d; }
-  function now() { return typeof performance !== "undefined" && performance.now ? performance.now() : Date.now(); }
 
   return {
-    SCORE, SYNONYMS,
+    SCORE,
     normalizeTitle, normalizeName, normalizeFilename, normalizePhone, isPhoneLike, phonesMatch,
-    tokenize, fold, boundedDistance, createRecord, prepareQuery,
+    tokenize, boundedDistance, createRecord, prepareQuery,
     SearchIndex, SearchController,
   };
 });
