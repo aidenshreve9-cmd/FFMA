@@ -89,6 +89,17 @@ button{font:inherit;color:inherit}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes breath{0%,100%{opacity:.22}50%{opacity:.75}}
 
+/* ---------- Start ---------- */
+#start{justify-content:center;align-items:center;text-align:center;padding-block:14px calc(28px + env(safe-area-inset-bottom,0px))}
+.start-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.start-orb{width:min(58vw,220px);height:min(58vw,220px);display:block;margin-bottom:10px}
+.start-kicker{font-family:var(--mono);font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--halo);margin:0}
+.start-title{font-family:var(--serif);font-size:46px;font-weight:400;line-height:1.02;color:var(--core);margin:0;letter-spacing:.005em;text-shadow:0 0 22px rgba(224,195,252,.35)}
+.start-line{color:var(--muted);font-size:15px;max-width:26ch;margin:4px 0 0;text-wrap:balance}
+.start-foot{width:100%;display:flex;flex-direction:column;align-items:center;gap:14px}
+.start-foot .btn{width:min(100%,320px)}
+.start-note{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:var(--faint);margin:0}
+
 /* ---------- Home ---------- */
 .home-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px;margin-top:-24px}
 .home-center .label{font-family:var(--serif);font-size:40px;font-weight:400;color:var(--core);letter-spacing:.01em;line-height:1}
@@ -254,8 +265,22 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
 <div id="app">
   <canvas id="nebula" aria-hidden="true"></canvas>
 
+  <!-- START -->
+  <section id="start" class="screen" aria-label="Welcome">
+    <div class="start-center">
+      <canvas class="start-orb" id="startCore" aria-hidden="true"></canvas>
+      <p class="start-kicker">Welcome to</p>
+      <h1 class="start-title">Focus Friend</h1>
+      <p class="start-line">Quiet your phone, pick a time, and give one thing your full attention.</p>
+    </div>
+    <div class="start-foot">
+      <button class="btn primary" id="startBtn">Start</button>
+      <p class="start-note">Free · No account · Stays on this device</p>
+    </div>
+  </section>
+
   <!-- HOME -->
-  <section id="home" class="screen" aria-label="Home">
+  <section id="home" class="screen" aria-label="Home" hidden>
     <div class="topbar">
       <button class="icon-btn" id="openSettings" aria-label="Settings">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
@@ -1008,7 +1033,7 @@ function slideOut(node) {
 }
 
 /* ================= Transitions ================= */
-let visibleScreen = "home";
+let visibleScreen = "start"; // every launch opens on the welcome screen
 function setScreen(id) {
   const from = visibleScreen;
   if (from === id) return;
@@ -1648,8 +1673,8 @@ const ORBITS = [
 const MOTES = Array.from({ length: 90 }, () => ({ x: R1(), y: R1(), z: R1(), vx: (R1() - .5) * .004, vy: -.002 - R1() * .004, ph: R1() * 6.28,
   col: R1() < .18 ? "#FF5400" : R1() < .3 ? "#F72585" : "#E0C3FC" }));
 // Home keeps the orb in an almost pitch-black void; other screens let the nebula come up.
-const NEBULA_LEVEL = { home: .18, settings: 1, done: .8, session: .8 };
-let nebLevel = NEBULA_LEVEL.home;
+const NEBULA_LEVEL = { start: .55, home: .18, settings: 1, done: .8, session: .8 };
+let nebLevel = NEBULA_LEVEL.start;
 function drawNebula(t) {
   const { c, w, h } = fit($("nebula"), .5), m = Math.max(w, h), L = nebLevel;
   c.globalCompositeOperation = "source-over";
@@ -2045,6 +2070,7 @@ function frame(now) {
   if (onSession && sceneChoice && (!sceneChoice.url || wasDirty)) drawScene(t);
   if ((visibleScreen !== "session" && visibleScreen !== "settings") || !$("home").hidden || !$("done").hidden) drawNebula(t);
   if (!$("settings").hidden && setBg && (!setBg.url || wasDirty)) drawAtmosphere(t);
+  if (!$("start").hidden) orb("start").draw(t, 0);
   if (!$("home").hidden) orb("home").draw(t, act.home.v);
   if (!$("session").hidden) orb("session").draw(t, act.session.v);
   if (!$("done").hidden) orb("done").draw(t, 0);
@@ -2420,6 +2446,20 @@ window.ffBack = () => {
   return false; // Home, or a running session: the app goes to the background and Focus keeps going
 };
 window.addEventListener("pagehide", () => { if (session && !session.finished) { distraction.restorePreviousSystemState(); } });
+
+/* ---------- Welcome screen ---------- */
+$("startBtn").onclick = () => {
+  if (visibleScreen !== "start") return;
+  setScreen("home");
+  $("focusBtn").focus({ preventScroll: true });
+};
+// Its parts rise in one after another; with reduced motion they are simply there.
+if (motionOK()) {
+  Array.from(document.querySelectorAll("#start .start-center > *, #start .start-foot > *")).forEach((n, i) =>
+    n.animate([{ opacity: 0, transform: "translateY(14px)" }, { opacity: 1, transform: "none" }],
+      { duration: 900, delay: 150 + i * 110, easing: EASE, fill: "backwards" }));
+}
+$("startBtn").focus({ preventScroll: true });
 
 resetDuration();
 renderSettings();
