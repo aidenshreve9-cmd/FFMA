@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Focus Friend Version 3.1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -92,19 +93,36 @@ button{font:inherit;color:inherit}
   box-shadow:0 0 0 1px rgba(247,37,133,.55),0 0 24px 2px rgba(217,0,255,.35),inset 0 0 24px rgba(247,37,133,.25)}
 @keyframes breath{0%,100%{opacity:.22}50%{opacity:.75}}
 
-/* ---------- Start ---------- */
-#start{justify-content:center;align-items:center;text-align:center;padding-block:14px calc(28px + env(safe-area-inset-bottom,0px))}
-#vortexCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1}
-.start-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;position:relative;z-index:2}
-.start-orb{width:min(58vw,220px);height:min(58vw,220px);display:block;margin-bottom:10px;opacity:0;animation:fadeInScale 1.2s var(--ease) .3s forwards}
-.start-kicker{font-family:var(--mono);font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--halo);margin:0;opacity:0;animation:fadeIn 1s var(--ease) .6s forwards}
-.start-title{font-family:var(--serif);font-size:46px;font-weight:400;line-height:1.02;color:var(--core);margin:0;letter-spacing:.005em;text-shadow:0 0 22px rgba(224,195,252,.35);opacity:0;animation:fadeIn 1.2s var(--ease) .8s forwards}
-.start-line{color:var(--muted);font-size:15px;max-width:26ch;margin:4px 0 0;text-wrap:balance;opacity:0;animation:fadeIn 1s var(--ease) 1.1s forwards}
-.start-foot{width:100%;display:flex;flex-direction:column;align-items:center;gap:14px;position:relative;z-index:2;opacity:0;animation:fadeIn 1s var(--ease) 1.4s forwards}
+/* ---------- Start: quantum tunnel ---------- */
+#start{justify-content:center;align-items:center;text-align:center;padding-block:14px calc(28px + env(safe-area-inset-bottom,0px));background:#02060d}
+#tunnel{position:absolute;inset:0;width:100%;height:100%;display:block;background:radial-gradient(ellipse 60% 26% at 50% 32%,#1f8a55 0%,#0a3322 40%,#02060d 78%)}
+.start-center{position:relative;flex:1;width:100%;display:grid;place-items:center;margin-top:18vh}
+.intro-line,.start-title-block{grid-area:1/1}
+.intro-line{font-family:var(--serif);font-style:italic;font-size:27px;line-height:1.25;color:#F1FFF6;margin:0;max-width:18ch;opacity:0;text-wrap:balance;text-shadow:0 0 16px rgba(0,0,0,.95),0 0 34px rgba(0,0,0,.8)}
+.start-title-block{display:flex;flex-direction:column;align-items:center;gap:14px}
+.start-kicker{font-family:var(--mono);font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:#BDF7D2;margin:0;text-shadow:0 1px 10px rgba(0,0,0,.95)}
+.start-title{font-family:var(--serif);font-size:46px;font-weight:400;line-height:1.02;color:var(--core);margin:0;letter-spacing:.005em;text-shadow:0 0 18px rgba(0,0,0,.9),0 0 30px rgba(120,255,170,.22)}
+.start-line{color:#D4ECDD;font-size:15px;max-width:26ch;margin:4px 0 0;text-wrap:balance;text-shadow:0 1px 12px rgba(0,0,0,.95),0 0 4px rgba(0,0,0,.8)}
+.start-foot{position:relative;width:100%;display:flex;flex-direction:column;align-items:center;gap:14px}
 .start-foot .btn{width:min(100%,320px)}
-.start-note{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:var(--faint);margin:0}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-@keyframes fadeInScale{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+.start-note{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:#9DB8A8;margin:0;text-shadow:0 1px 8px rgba(0,0,0,.95)}
+/* Start: dark purple and black, shaded unevenly, the shading slowly drifting */
+.btn.void{color:#F4ECFF;letter-spacing:.06em;
+  background:
+    radial-gradient(60% 120% at 20% 25%,rgba(106,13,173,.9) 0%,rgba(106,13,173,0) 60%),
+    radial-gradient(55% 110% at 80% 75%,rgba(58,8,92,.95) 0%,rgba(58,8,92,0) 65%),
+    radial-gradient(40% 90% at 55% 40%,rgba(0,0,0,.9) 0%,rgba(0,0,0,0) 70%),
+    linear-gradient(115deg,#07010d 0%,#2a0a47 36%,#040007 58%,#1c0533 80%,#0b0214 100%);
+  background-size:230% 230%,210% 210%,260% 260%,320% 320%;
+  box-shadow:inset 0 0 0 1px rgba(155,93,229,.38),inset 0 1px 1px rgba(255,255,255,.12),0 10px 30px rgba(0,0,0,.75),0 0 24px rgba(106,13,173,.32);
+  animation:voidShift 12s ease-in-out infinite alternate,voidGlow 6s ease-in-out infinite}
+@keyframes voidShift{
+  0%{background-position:0% 0%,100% 100%,50% 0%,0% 50%}
+  50%{background-position:65% 35%,25% 70%,0% 100%,100% 40%}
+  100%{background-position:100% 100%,0% 10%,100% 30%,40% 100%}}
+@keyframes voidGlow{
+  0%,100%{box-shadow:inset 0 0 0 1px rgba(155,93,229,.30),inset 0 1px 1px rgba(255,255,255,.10),0 10px 30px rgba(0,0,0,.75),0 0 18px rgba(106,13,173,.22)}
+  50%{box-shadow:inset 0 0 0 1px rgba(175,110,245,.55),inset 0 1px 1px rgba(255,255,255,.16),0 10px 30px rgba(0,0,0,.75),0 0 34px rgba(123,44,191,.45)}}
 
 /* ---------- Home ---------- */
 .home-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px;margin-top:-24px}
@@ -263,6 +281,7 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
   .dial .breath{animation:none}
   .dial .breath{opacity:.5}
   .dial .arc,.dial .node{transition:none}
+  .btn.void{animation:none;background-position:65% 35%,25% 70%,0% 100%,100% 40%}
 }
 </style>
 
@@ -271,15 +290,18 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
 
   <!-- START -->
   <section id="start" class="screen" aria-label="Welcome">
-    <canvas id="vortexCanvas" aria-hidden="true"></canvas>
+    <canvas id="tunnel" aria-hidden="true"></canvas>
     <div class="start-center">
-      <canvas class="start-orb" id="startCore" aria-hidden="true"></canvas>
-      <p class="start-kicker">Welcome to</p>
-      <h1 class="start-title">Focus Friend</h1>
-      <p class="start-line">Quiet your phone, pick a time, and give one thing your full attention.</p>
+      <p class="intro-line" id="intro1" aria-hidden="true">Take a slow breath.</p>
+      <p class="intro-line" id="intro2" aria-hidden="true">Let the noise fall away.</p>
+      <div class="start-title-block" id="startTitle">
+        <p class="start-kicker">Welcome to</p>
+        <h1 class="start-title">Focus Friend</h1>
+        <p class="start-line">Quiet your phone, pick a time, and give one thing your full attention.</p>
+      </div>
     </div>
-    <div class="start-foot">
-      <button class="btn primary" id="startBtn">Start</button>
+    <div class="start-foot" id="startFoot">
+      <button class="btn void" id="startBtn">Start</button>
       <p class="start-note">Free · No account · Stays on this device</p>
     </div>
   </section>
@@ -1822,6 +1844,116 @@ function createOrb(canvas) {
 const orbs = {};
 const orb = key => orbs[key] || (orbs[key] = createOrb($(key + "Core")));
 
+/* ================= Welcome: quantum tunnel ================= */
+// Log-polar space around an elliptical throat: grid, nebula and stars all drift down into it.
+const TUNNEL_FRAG = `
+precision highp float;
+uniform vec2 uRes;
+uniform float uTime;
+const float TAU=6.2831853;
+float h13(vec3 p){p=fract(p*0.1031);p+=dot(p,p.zyx+31.32);return fract((p.x+p.y)*p.z);}
+float h12(vec2 p){vec3 q=fract(vec3(p.xyx)*0.1031);q+=dot(q,q.yzx+33.33);return fract((q.x+q.y)*q.z);}
+float vn(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
+  return mix(mix(mix(h13(i),h13(i+vec3(1,0,0)),f.x),mix(h13(i+vec3(0,1,0)),h13(i+vec3(1,1,0)),f.x),f.y),
+             mix(mix(h13(i+vec3(0,0,1)),h13(i+vec3(1,0,1)),f.x),mix(h13(i+vec3(0,1,1)),h13(i+vec3(1,1,1)),f.x),f.y),f.z);}
+float fbm(vec3 p){float s=0.0,a=0.5;for(int i=0;i<4;i++){s+=a*vn(p);p=p*2.03+vec3(1.7,9.2,3.1);a*=0.5;}return s;}
+// antialiased line at every integer of x; w = one pixel in x's units; too-dense lines fade out
+float gline(float x,float w){float d=abs(fract(x+0.5)-0.5);return (1.0-smoothstep(0.35*w,1.35*w,d))*clamp(1.0-w*3.5,0.0,1.0);}
+void main(){
+  float m=min(uRes.x,uRes.y);
+  vec2 p=(gl_FragCoord.xy-0.5*uRes)/m;
+  float px=1.0/m, t=uTime;
+  vec2 q=p-vec2(0.0,0.30);
+  q.y*=1.55;
+  float r=max(length(q),1e-4);
+  float lr=log(r);
+  float a=atan(q.y,q.x)+t*0.02;
+  float flow=lr+t*0.12;
+  const float RIM=0.2;
+  float inside=smoothstep(RIM+0.015,RIM-0.03,r);
+
+  vec3 col=vec3(0.006,0.016,0.04);
+  col+=vec3(0.015,0.04,0.08)*smoothstep(1.3,0.0,length(p));
+
+  vec3 np=vec3(cos(a)*1.7,sin(a)*1.7,flow*1.7);
+  float n=fbm(np);
+  float cloud=smoothstep(0.42,0.82,n);
+  vec3 green=vec3(0.07,0.80,0.43), mint=vec3(0.78,1.0,0.84);
+  col=mix(col,green*0.75,cloud*0.8);
+  col+=mint*pow(max(cloud-0.45,0.0),2.0)*1.6;
+
+  col*=mix(1.0,0.72,smoothstep(0.42,RIM,r)*(1.0-inside));
+  if(inside>0.0){
+    float s=fbm(vec3(cos(a)*3.2,sin(a)*3.2,lr*0.9+t*0.45));
+    vec3 tube=green*(0.18+1.1*smoothstep(0.3,0.85,s))+mint*pow(max(s-0.55,0.0),2.0)*3.0;
+    tube+=mint*exp(-r*14.0)*0.7;
+    col=mix(col,tube,inside);
+  }
+  col+=vec3(0.72,1.0,0.32)*exp(-pow((r-RIM)/0.006,2.0))*0.35;
+
+  float Na=72.0, Nr=Na/TAU;
+  float w=px*1.55/r;
+  float g=max(gline(a/TAU*Na,w*Na/TAU),gline(flow*Nr,w*Nr));
+  col+=vec3(0.72,1.0,0.32)*g*mix(0.5,0.3,inside)*smoothstep(0.02,0.06,r);
+
+  float Ns=110.0;
+  vec2 sc=vec2(a/TAU*Ns,(lr+t*0.35)*Ns/TAU*0.5);
+  vec2 cid=floor(sc), f=fract(sc);
+  cid.x=mod(cid.x,Ns);
+  if(h12(cid)>0.74){
+    float sx=0.2+0.6*h12(cid+17.0), sy=0.1+0.4*h12(cid+41.0), len=0.15+0.3*h12(cid+7.0);
+    float wx=w*Ns/TAU;
+    float along=smoothstep(sy-0.03,sy,f.y)*(1.0-smoothstep(sy,sy+len,f.y));
+    float star=(1.0-smoothstep(0.6*wx,1.6*wx,abs(f.x-sx)))*along*(0.45+0.55*h12(cid+3.0));
+    col+=vec3(0.86,0.95,1.0)*star*1.4*clamp(1.0-wx*3.0,0.0,1.0)*smoothstep(0.04,0.14,r);
+  }
+
+  vec2 corner=0.5*uRes/m*vec2(1.0,-1.0);
+  float om=smoothstep(0.55,0.0,length(p-corner*0.95));
+  if(om>0.0){
+    float o=fbm(np*1.3+vec3(7.0,3.0,1.0));
+    col+=vec3(1.0,0.5,0.17)*om*(0.25+0.9*smoothstep(0.35,0.8,o));
+  }
+
+  col*=1.0-0.4*smoothstep(0.45,1.25,length(p*vec2(1.0,0.75)));
+  gl_FragColor=vec4(clamp(col,0.0,1.0),1.0);
+}`;
+function createTunnel(canvas) {
+  let gl = null;
+  try { gl = canvas.getContext("webgl", { alpha: false, antialias: false }); } catch (e) {}
+  const none = { draw() {}, release() {} };
+  if (!gl) return none; // the canvas's CSS gradient stands in
+  const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null; };
+  const vs = sh(gl.VERTEX_SHADER, ORB_VERT), fs = sh(gl.FRAGMENT_SHADER, TUNNEL_FRAG);
+  const prog = vs && fs && gl.createProgram();
+  if (!prog) return none;
+  gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return none;
+  gl.useProgram(prog);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog, "p"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  const uRes = gl.getUniformLocation(prog, "uRes"), uTime = gl.getUniformLocation(prog, "uTime");
+  let live = true;
+  return {
+    draw(t) {
+      if (!live) return;
+      const dpr = Math.min(orbQuality, window.devicePixelRatio || 1);
+      const W = Math.max(2, Math.round(canvas.clientWidth * dpr)), H = Math.max(2, Math.round(canvas.clientHeight * dpr));
+      if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
+      gl.viewport(0, 0, W, H);
+      gl.uniform2f(uRes, W, H); gl.uniform1f(uTime, t);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    },
+    release() {
+      if (!live) return;
+      live = false;
+      const ext = gl.getExtension("WEBGL_lose_context"); if (ext) ext.loseContext();
+    },
+  };
+}
+const tunnel = createTunnel($("tunnel"));
+
 /* ================= Scenic views: eight cosmic scenes, drawn in code ================= */
 const RG = rng(3);
 const GALAXY = Array.from({ length: 1500 }, (_, i) => {
@@ -2063,9 +2195,9 @@ function frame(now) {
   const t = animate ? (now - T0) / 1000 : 20;
   const onSession = visibleScreen === "session" || !$("session").hidden;
   if (onSession && sceneChoice && (!sceneChoice.url || wasDirty)) drawScene(t);
-  if ((visibleScreen !== "session" && visibleScreen !== "settings") || !$("home").hidden || !$("done").hidden) drawNebula(t);
+  if ((visibleScreen !== "session" && visibleScreen !== "settings" && visibleScreen !== "start") || !$("home").hidden || !$("done").hidden) drawNebula(t);
   if (!$("settings").hidden && setBg && (!setBg.url || wasDirty)) drawAtmosphere(t);
-  if (!$("start").hidden) orb("start").draw(t, 0);
+  if (!$("start").hidden) tunnel.draw(t);
   if (!$("home").hidden) orb("home").draw(t, act.home.v);
   if (!$("session").hidden) orb("session").draw(t, act.session.v);
   if (!$("done").hidden) orb("done").draw(t, 0);
@@ -2443,66 +2575,30 @@ window.ffBack = () => {
 window.addEventListener("pagehide", () => { if (session && !session.finished) { distraction.restorePreviousSystemState(); } });
 
 /* ---------- Welcome screen ---------- */
-// Cosmic vortex canvas animation
-const vortexCanvas = $("vortexCanvas");
-const vortexCtx = vortexCanvas.getContext("2d");
-let vortexAnim = null, vortexTime = 0;
-function initVortex() {
-  const w = vortexCanvas.width = vortexCanvas.offsetWidth * devicePixelRatio;
-  const h = vortexCanvas.height = vortexCanvas.offsetHeight * devicePixelRatio;
-  vortexCtx.scale(devicePixelRatio, devicePixelRatio);
-  const cx = w / (2 * devicePixelRatio), cy = h / (2 * devicePixelRatio);
-  function drawVortex(t) {
-    vortexCtx.clearRect(0, 0, w / devicePixelRatio, h / devicePixelRatio);
-    vortexCtx.fillStyle = "#000000"; vortexCtx.fillRect(0, 0, w / devicePixelRatio, h / devicePixelRatio);
-    const particles = 800, spirals = 3;
-    for (let i = 0; i < particles; i++) {
-      const angle = (i / particles) * Math.PI * 2 + t * 0.3;
-      const r = (Math.sin(t * 0.4 + i * 0.02) * 40 + 60 + i * 0.15) % 200;
-      const x = cx + Math.cos(angle) * r;
-      const y = cy + Math.sin(angle) * r * 0.7;
-      const hue = (angle * 180 / Math.PI + t * 30) % 360;
-      const sat = 70 + Math.sin(t * 0.5 + i * 0.01) * 30;
-      const lum = 40 + Math.sin(t * 0.6 - i * 0.01) * 20;
-      vortexCtx.fillStyle = `hsl(${hue}, ${sat}%, ${lum}%)`;
-      const size = 1.5 + Math.sin(t * 0.8 + i * 0.03) * 0.8;
-      vortexCtx.fillRect(x - size / 2, y - size / 2, size, size);
-    }
-    vortexCtx.globalAlpha = 0.15;
-    for (let i = 0; i < 4; i++) {
-      const angle = t * (0.15 - i * 0.03);
-      const radius = 80 + i * 40;
-      vortexCtx.strokeStyle = `hsl(${280 + i * 20}, 70%, 50%)`;
-      vortexCtx.lineWidth = 1.5 - i * 0.3;
-      vortexCtx.beginPath();
-      for (let j = 0; j < 60; j++) {
-        const a = (j / 60) * Math.PI * 2 + angle;
-        const r = radius + Math.sin(j * 0.3 + t * 0.4) * 15;
-        const x = cx + Math.cos(a) * r;
-        const y = cy + Math.sin(a) * r * 0.7;
-        j === 0 ? vortexCtx.moveTo(x, y) : vortexCtx.lineTo(x, y);
-      }
-      vortexCtx.closePath();
-      vortexCtx.stroke();
-    }
-    vortexCtx.globalAlpha = 1;
-  }
-  function animate() {
-    vortexTime += 0.016;
-    if (vortexTime < 2.5) {
-      drawVortex(vortexTime);
-      vortexAnim = requestAnimationFrame(animate);
-    }
-  }
-  animate();
+// Two calm lines fade in and out, then the title and Start rise in. A tap skips ahead.
+const introAnims = [];
+let introDone = !motionOK();
+function skipIntro() { introDone = true; introAnims.forEach(x => x.finish()); }
+if (!introDone) {
+  const play = (node, k, delay, duration) => { const x = node.animate(k, { delay, duration, easing: "ease-in-out", fill: "both" }); introAnims.push(x); return x; };
+  const lineK = [
+    { opacity: 0, transform: "translateY(12px)", filter: "blur(6px)" },
+    { opacity: 1, transform: "none", filter: "blur(0px)", offset: .3 },
+    { opacity: 1, transform: "none", filter: "blur(0px)", offset: .7 },
+    { opacity: 0, transform: "translateY(-10px)", filter: "blur(6px)" },
+  ];
+  const riseK = [{ opacity: 0, transform: "translateY(14px)", filter: "blur(6px)" }, { opacity: 1, transform: "none", filter: "blur(0px)" }];
+  play($("intro1"), lineK, 500, 3000);
+  play($("intro2"), lineK, 3400, 3200);
+  Array.from($("startTitle").children).forEach((n, i) => play(n, riseK, 6500 + i * 260, 1400));
+  play($("startFoot"), riseK, 7400, 1300).onfinish = () => { introDone = true; };
 }
-if (motionOK()) initVortex();
-
+$("start").addEventListener("click", () => { if (!introDone) skipIntro(); });
 $("startBtn").onclick = () => {
-  if (visibleScreen !== "start") return;
-  if (vortexAnim) { cancelAnimationFrame(vortexAnim); vortexAnim = null; }
+  if (visibleScreen !== "start" || !introDone) return; // during the intro, the tap only skips ahead
   setScreen("home");
   $("focusBtn").focus({ preventScroll: true });
+  setTimeout(() => { if (visibleScreen !== "start") tunnel.release(); }, 1000);
 };
 $("startBtn").focus({ preventScroll: true });
 
