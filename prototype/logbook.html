@@ -90,20 +90,21 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:v
 
 <div class="wrap">
   <header>
-    <p class="eyebrow">Wednesday 23 September 2026 · one working session</p>
+    <p class="eyebrow">23–24 September 2026 · two working sessions</p>
     <h1>Focus Friend <em>Logbook</em></h1>
-    <p class="lede">Every change made to the Focus Friend prototype today, in order: what you asked for, what was built, what was fixed, and what is still open. Times are UTC.</p>
+    <p class="lede">Every change made to Focus Friend so far, in order: what you asked for, what was built, what was fixed, and what is still open. Times are UTC.</p>
     <nav class="links" aria-label="Project links">
       <a href="https://claude.ai/artifact/EUiroHykyDk7Tqn7ZXFYwq">Open the app <span>Version 3.0</span></a>
-      <a href="https://github.com/aidenshreve9-cmd/FFMA/pull/1">Pull request <span>#1</span></a>
+      <a href="https://github.com/aidenshreve9-cmd/FFMA/pull/1">Pull request <span>#1 · merged</span></a>
+      <a href="https://github.com/aidenshreve9-cmd/FFMA/tree/claude/mobile-app-artifact-ouptuu">Code <span>branch</span></a>
     </nav>
   </header>
 
   <div class="stats" role="list">
-    <div role="listitem"><b>3.0</b><span>current version</span></div>
-    <div role="listitem"><b>5</b><span>commits in the pull request</span></div>
-    <div role="listitem"><b>5</b><span>published versions</span></div>
-    <div role="listitem"><b>9</b><span>bugs fixed in 3.0</span></div>
+    <div role="listitem"><b>3.0</b><span>spec implemented</span></div>
+    <div role="listitem"><b>2</b><span>platforms: browser + Android</span></div>
+    <div role="listitem"><b>84</b><span>automated tests passing</span></div>
+    <div role="listitem"><b>13</b><span>spec conflicts resolved</span></div>
   </div>
 
   <h2>Timeline</h2>
@@ -221,6 +222,93 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:v
         </ul>
       </div>
     </li>
+    <li class="entry">
+      <div class="meta"><time datetime="2026-09-23T15:17Z">23 Sep · 15:17</time><span class="tag">Merged</span></div>
+      <h3>Pull request #1 merged into main</h3>
+      <div class="card"><ul><li>Hourly check-ins stopped. New work restarted the branch from the merged main.</li></ul></div>
+    </li>
+
+    <li class="entry release">
+      <div class="meta"><time datetime="2026-09-24T09:46Z">24 Sep · 09:46</time><span class="tag rel">V3.0 spec · browser</span><span class="commit">fd2d149</span></div>
+      <h3>Private local search, exact spec wording</h3>
+      <p class="ask">You provided the full Focus Friend V3.0 specification: 15 chapters plus a local search system, to be built for the browser and native Android.</p>
+      <div class="card">
+        <ul>
+          <li><b>Search engine</b> (<code>search.js</code>, no dependencies): normalization, tokenization, phone matching across formats, ranked tiers, bounded fuzzy matching, a tiny synonym list, did-you-mean, incremental index. No history, no network, counts-only developer logs.</li>
+          <li><b>Where search appears:</b> Trusted Contacts as soon as one exists; sounds and scenic views only past 12 options; never on Home.</li>
+          <li><b>Keyboard and screen readers:</b> ↓ ↑ move through results, Enter selects, Escape clears; result counts spoken after a pause in typing.</li>
+          <li><b>Exact wording:</b> "Focus can't start without access." with "Review the rules again" / "Go back"; browser limits stated plainly for calls and alarms.</li>
+          <li><b>Contacts</b> now store a normalized number; duplicates are caught across formats.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>Bugs the new tests caught</h4>
+        <ul>
+          <li>A fast flick could move two steps. It now moves exactly one.</li>
+          <li>A message could sit on top of a sheet button and swallow the tap.</li>
+          <li>The search file broke on pages that didn't declare UTF-8.</li>
+        </ul>
+      </div>
+    </li>
+
+    <li class="entry release">
+      <div class="meta"><time datetime="2026-09-24T10:14Z">24 Sep · 10:14</time><span class="tag rel">V3.0 spec · Android</span><span class="commit">75f43a6</span></div>
+      <h3>Native Android app</h3>
+      <div class="card">
+        <ul>
+          <li><b>Real silencing:</b> Focus's own Do Not Disturb rule, never touching your personal Do Not Disturb settings. Switching it off returns the phone exactly as it was.</li>
+          <li><b>Always through:</b> emergency alerts and repeat callers. <b>When switched on:</b> Trusted Contacts (temporarily starred, then un-starred) and alarms.</li>
+          <li><b>Safety net:</b> every change is recorded first; restore runs at the end time, after a crash, and after a reboot.</li>
+          <li><b>Same app, natively:</b> 3D orb (with 2D fallback), 8 scenes, 8 noise colours, looping time picker, Settings with search, transitions, TalkBack and keyboard support, bundled fonts, no internet permission.</li>
+          <li><b>Checked:</b> 30 Kotlin core tests pass; the app compiles against Android 15. Building the APK and running the Robolectric tests need Google's servers, which were blocked here.</li>
+        </ul>
+      </div>
+    </li>
+
+    <li class="entry release">
+      <div class="meta"><time datetime="2026-09-24T10:50Z">24 Sep · 10:50</time><span class="tag rel">Your choices</span></div>
+      <h3>Unrequested extras: removed or kept</h3>
+      <p class="ask">You asked to choose which changes the spec didn't require.</p>
+      <div class="card">
+        <ul>
+          <li><b>Removed from both apps:</b> search synonyms ("galaxy" no longer finds Stellar Nursery), accent matching ("jose" no longer finds "José") and developer timing logs. Search now logs nothing in any build.</li>
+          <li><b>Undone:</b> the contact form's number field says "Phone number" again.</li>
+          <li><b>Kept (no preference given):</b> Android's bundled fonts with no internet permission, backups off, the one-time notification permission ask, and Trusted Contacts via temporary starring.</li>
+          <li><b>Checked:</b> 29 search tests, 16 browser UI tests and 29 Kotlin tests pass; the Android app still compiles against Android 15.</li>
+        </ul>
+      </div>
+    </li>
+
+    <li class="entry release">
+      <div class="meta"><time datetime="2026-09-24T12:00Z">24 Sep</time><span class="tag rel">Atmosphere &amp; audio</span></div>
+      <h3>Atmosphere and sound previews</h3>
+      <p class="ask">You sent the Atmosphere &amp; Audio patch.</p>
+      <div class="card">
+        <ul>
+          <li><b>Atmosphere:</b> "Scenic view" is now "Atmosphere". Settings' background shows the one you choose and crossfades as you pick another.</li>
+          <li><b>Previews:</b> tapping a sound plays it for 5 seconds, fading in and out. Switching fades the old sound out, changes over in silence, then fades the new one in, so two sounds never overlap. Quick taps skip straight to the last one.</li>
+          <li><b>Deselect:</b> tapping the chosen sound again fades it out and deselects it. Focus is then silent.</li>
+          <li><b>Leaving Settings</b> stops the preview at once (on Android, leaving the app does too).</li>
+          <li><b>Focus:</b> the sound loops for the whole session and fades in frame by frame with the page transition.</li>
+          <li><b>Checked:</b> 29 search, 19 browser UI and 34 Kotlin tests pass; the Android app compiles against Android 15. It hasn't been heard on a real phone yet.</li>
+        </ul>
+      </div>
+    </li>
+
+    <li class="entry">
+      <div class="meta"><time datetime="2026-09-24T14:00Z">24 Sep</time><span class="tag">Optimization</span></div>
+      <h3>Safe code optimization</h3>
+      <p class="ask">You asked to optimize the code without changing the app, and to keep the original recoverable.</p>
+      <div class="card">
+        <ul>
+          <li><b>Original kept:</b> Git tag <code>focus-friend-v3.0-original</code>.</li>
+          <li><b>Browser:</b> sound and atmosphere lookups, background painting and file-picker checks each live in one place now. Fixed particle colours are worked out once instead of every frame, and a few unused styles are gone.</li>
+          <li><b>Android:</b> the scenes, the dial and the glass panels stopped creating fixed objects on every frame.</li>
+          <li><b>Unchanged:</b> screens, wording, settings, storage and behaviour. Every browser screen and all 8 atmospheres match the original pixel for pixel.</li>
+          <li><b>Checked:</b> 29 search, 21 browser UI (2 new) and 34 Kotlin tests pass; the Android app compiles against Android 15. See <code>docs/OPTIMIZATION.md</code>.</li>
+        </ul>
+      </div>
+    </li>
   </ol>
 
   <h2>Decisions you made</h2>
@@ -232,6 +320,11 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:v
     <div class="row"><span class="state ok">Approved</span><div><b>Trusted Contacts and Alarm Safety only apply when switched on</b><p>Repeat callers ring on the second call. Emergency alerts always get through.</p></div></div>
     <div class="row"><span class="state ok">Approved</span><div><b>8 cosmic scenic views and 8 noise colors</b><p>Settles the spec's open question about which scenic views to include.</p></div></div>
     <div class="row"><span class="state ok">Approved</span><div><b>Removed the Home title and the Settings footer</b></div></div>
+    <div class="row"><span class="state ok">Approved</span><div><b>V3.0 specification</b><p>Private local search in Settings, and a native Android app with real Do Not Disturb.</p></div></div>
+    <div class="row"><span class="state ok">Removed</span><div><b>Search synonyms, accent matching, developer timing logs</b><p>Search matches only what you type, and logs nothing.</p></div></div>
+    <div class="row"><span class="state ok">Undone</span><div><b>"Phone" placeholder</b><p>Back to "Phone number".</p></div></div>
+    <div class="row"><span class="state ok">Kept</span><div><b>Android extras</b><p>Bundled fonts with no internet permission, backups off, one-time notification permission ask. You gave no preference.</p></div></div>
+    <div class="row"><span class="state ok">Kept</span><div><b>How Trusted Contacts get through on Android</b><p>Focus stars them for the session and un-stars them after. People you already starred also get through, and numbers not saved in Contacts can't be recognised. You gave no preference.</p></div></div>
   </div>
 
   <h2>Choices waiting for your OK</h2>
@@ -240,10 +333,12 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:v
     <div class="row"><span class="state open">Open</span><div><b>Slide direction</b><p>Sliding left goes to the next time and sliding right goes back, like flipping through a list.</p></div></div>
     <div class="row"><span class="state open">Open</span><div><b>Default switch states</b><p>Alarm Safety starts ON so medication alarms aren't missed. Trusted Contacts starts OFF.</p></div></div>
     <div class="row"><span class="state open">Open</span><div><b>Black Noise</b><p>Strictly, "black noise" means silence. It's built as a very quiet sub-bass rumble instead.</p></div></div>
-    <div class="row"><span class="state open">Open</span><div><b>Default scenic view</b><p>Quantum Nebula.</p></div></div>
+    <div class="row"><span class="state open">Open</span><div><b>Default atmosphere</b><p>Quantum Nebula.</p></div></div>
+    <div class="row"><span class="state open">Open</span><div><b>Atmosphere background on Home too?</b><p>Now only Settings shows the chosen atmosphere behind it. Home keeps its dark nebula so the orb stands out.</p></div></div>
     <div class="row"><span class="state open">Open</span><div><b>Home helpers</b><p>The step dots were replaced by the dial arc. The "Slide the button to change the time" hint is still shown.</p></div></div>
     <div class="row"><span class="state open">Open</span><div><b>Done screen extras</b><p>The quote's author is shown, and ending early says "Session ended".</p></div></div>
     <div class="row"><span class="state open">Open</span><div><b>Buy Me a Coffee link</b><p>Not provided yet. The button opens a sheet saying so.</p></div></div>
+    <div class="row"><span class="state open">Open</span><div><b>When the contacts search appears</b><p>Now: as soon as one contact exists, as the spec says. It could wait until, say, 6 contacts.</p></div></div>
     <div class="row"><span class="state open">Open</span><div><b>Quote wording</b><p>Each quote still needs checking against a public-domain translation before release.</p></div></div>
   </div>
 
@@ -251,7 +346,8 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:v
   <p class="sub">What the browser version can't do, and what the Android app will do instead. Nothing here is faked in the app.</p>
   <div class="ledger">
     <div class="row"><span class="state blocked">Browser</span><div><b>Silencing notifications and calls</b><p>Web pages can't control Do Not Disturb. The Android app will, with Do Not Disturb access, and restore your settings afterward.</p></div></div>
-    <div class="row"><span class="state blocked">Browser</span><div><b>Trusted Contacts bypass</b><p>Android's Do Not Disturb allows calls only from "starred" or "all" contacts, not a custom list. The realistic plan is to star your Trusted Contacts during a session and un-star them afterward, which needs permission to edit contacts.</p></div></div>
+    <div class="row"><span class="state blocked">Browser</span><div><b>Trusted Contacts bypass</b><p>Only the Android app can do this. It stars your Trusted Contacts during a session and un-stars them afterward, which needs permission to edit contacts.</p></div></div>
+    <div class="row"><span class="state open">Check</span><div><b>Android app on a real phone</b><p>The APK hasn't been built or run yet: Google's servers were blocked in the build environment. Build it in Android Studio and walk through the checklist in docs/TESTING.md.</p></div></div>
     <div class="row"><span class="state ok">Android</span><div><b>Repeat callers, alarms, emergency alerts</b><p>Built-in Do Not Disturb settings. The second call from the same person within 15 minutes rings.</p></div></div>
     <div class="row"><span class="state blocked">Unbuilt</span><div><b>Purple Alarm Safety effect</b><p>Needs a reliable way to tell when an alarm is ringing. That still needs researching on Android.</p></div></div>
     <div class="row"><span class="state open">Check</span><div><b>Sound with the screen locked, and battery use</b><p>Depends on the phone's browser. The animated background and 3D orb should be tested on your phone.</p></div></div>
@@ -259,10 +355,10 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:v
 
   <h2>Next time</h2>
   <div class="card"><ul>
-    <li>Try Version 3.0 on your phone: slide feel, orb touch, all 8 sounds, and all 8 scenic views.</li>
-    <li>Answer the open choices above.</li>
-    <li>Start the native Android app (Kickoff Kit Phase 1: the project skeleton), using this prototype as the visual reference.</li>
+    <li>Build the Android app in Android Studio (open the <code>android/</code> folder) and run the device checklist in <code>docs/TESTING.md</code>.</li>
+    <li>Answer the open choices above, if any of them should change.</li>
+    <li>Try the browser preview's new search: add a few Trusted Contacts and search by name or any phone format.</li>
   </ul></div>
 
-  <footer>Branch <code>claude/mobile-app-artifact-ouptuu</code> · file <code>prototype/focus-friend.html</code> · this logbook is <code>prototype/logbook.html</code></footer>
+  <footer>Branch <code>claude/mobile-app-artifact-ouptuu</code> · browser app <code>prototype/</code> · Android app <code>android/</code> · docs <code>docs/</code> · this logbook is <code>prototype/logbook.html</code></footer>
 </div>

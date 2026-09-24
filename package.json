@@ -1,0 +1,12 @@
+{
+  "name": "focus-friend",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Focus Friend: a privacy-first focus timer (browser preview + native Android).",
+  "scripts": {
+    "test": "node --test \"tests/search/*.test.js\"",
+    "test:ui": "node tests/ui/run-ui-tests.mjs",
+    "test:all": "npm test && npm run test:ui"
+  },
+  "license": "UNLICENSED"
+}

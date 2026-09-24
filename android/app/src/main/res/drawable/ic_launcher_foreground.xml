@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The quantum orb: lavender core fading through violet and magenta. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M54,54m-26,0a26,26 0,1 1,52 0a26,26 0,1 1,-52 0">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="radial" android:centerX="48" android:centerY="46" android:gradientRadius="30">
+                <item android:offset="0" android:color="#FFFFFFFF" />
+                <item android:offset="0.25" android:color="#FFE0C3FC" />
+                <item android:offset="0.6" android:color="#FF8A2BE2" />
+                <item android:offset="0.85" android:color="#FFD900FF" />
+                <item android:offset="1" android:color="#FF1E005B" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M54,54m-31,0a31,31 0,1 1,62 0a31,31 0,1 1,-62 0"
+        android:strokeColor="#99F72585" android:strokeWidth="1.2" android:fillColor="#00000000" />
+</vector>
