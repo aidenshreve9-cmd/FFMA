@@ -338,9 +338,11 @@ class NebulaView(c: Context) : AmbientView(c) {
     private data class Orbit(val rx: Float, val k: Float, val a: Float, val speed: Float, val ph: Float, val col: Int)
 }
 
-/** Full-screen scenic view behind the session timer: a built-in scene or the person's picture. */
+/** Full-screen atmosphere (behind the session timer and Settings): a built-in scene or the person's picture. */
 class SceneView(c: Context) : AmbientView(c) {
     private val p = Painter()
+    /** Edge dimming for the session timer; Settings uses its own even dim instead. */
+    var dimmed = true
     private var sceneId = "quantum"
     private var picture: Bitmap? = null
     private val src = Rect(); private val dst = RectF()
@@ -356,6 +358,7 @@ class SceneView(c: Context) : AmbientView(c) {
             src.set(0, 0, bmp.width, bmp.height); dst.set((w - iw) / 2, (h - ih) / 2, (w + iw) / 2, (h + ih) / 2)
             canvas.drawBitmap(bmp, src, dst, p.paint)
         } else ScenePainter.draw(sceneId, canvas, w, h, time, p, resources.displayMetrics.density)
+        if (!dimmed) return
         // Dim toward the edges so the timer stays readable.
         p.paint.shader = RadialGradient(w / 2, h * .46f, max(w, h) * .8f, intArrayOf(0x1A000000, 0x1A000000, 0xA8000000.toInt()), floatArrayOf(0f, .2f, 1f), Shader.TileMode.CLAMP)
         canvas.drawRect(0f, 0f, w, h, p.paint); p.paint.shader = null

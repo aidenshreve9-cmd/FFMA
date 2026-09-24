@@ -22,6 +22,22 @@ const server = http.createServer((req, res) => {
 await new Promise(r => server.listen(0, "127.0.0.1", r));
 const BASE = `http://127.0.0.1:${server.address().port}/focus-friend.html`;
 
+/* ---------- audio probe ----------
+ * Watches the page's Web Audio use without changing it: counts playing sources (never more
+ * than one should play) and reads the level of whatever is connected to the speakers. */
+const AUDIO_PROBE = () => {
+  const A = window.__audio = { live: 0, maxLive: 0, starts: 0, outs: new Set() };
+  const S = AudioBufferSourceNode.prototype, start = S.start, stop = S.stop;
+  S.start = function (...a) { A.live++; A.starts++; A.maxLive = Math.max(A.maxLive, A.live); this.__on = true; return start.apply(this, a); };
+  S.stop = function (...a) { if (this.__on) { this.__on = false; A.live--; } return stop.apply(this, a); };
+  const N = AudioNode.prototype, connect = N.connect, disconnect = N.disconnect;
+  N.connect = function (t, ...a) { if (t instanceof AudioDestinationNode && this instanceof GainNode) A.outs.add(this); return connect.call(this, t, ...a); };
+  N.disconnect = function (...a) { A.outs.delete(this); return disconnect.apply(this, a); };
+  A.level = () => Math.max(0, ...[...A.outs].map(g => g.gain.value));
+  A.reset = () => { A.maxLive = A.live; A.starts = 0; };
+};
+const audio = (page, k) => page.evaluate(k => { const v = window.__audio[k]; return typeof v === "function" ? v() : v; }, k);
+
 /* ---------- mini harness ---------- */
 const results = [];
 async function test(name, fn) {
@@ -41,6 +57,8 @@ async function open(opts = {}) {
   page.on("console", m => { logs.push(m.text()); if (m.type() === "error" && !/fonts|ERR_CERT|net::/.test(m.text())) errors.push(m.text()); });
   page.on("request", r => requests.push(r.url()));
   if (opts.blockSearch) await page.route("**/search.js", r => r.abort());
+  if (opts.audioProbe) await ctx.addInitScript(AUDIO_PROBE);
+  if (opts.settings) await ctx.addInitScript(s => localStorage.setItem("ff.settings.v1", JSON.stringify(s)), opts.settings);
   await page.goto(BASE);
   await page.waitForTimeout(400);
   return { ctx, page, errors, requests, logs };
@@ -178,7 +196,7 @@ await test("settings: section order, defaults, exact Alarm Safety wording, permi
   const { page, ctx } = await open();
   await openSettings(page);
   eq(await page.evaluate(() => [...document.querySelectorAll("#settings .set-sec h2")].map(h => h.textContent)),
-    ["Sound", "Scenic view", "Trusted Contacts", "Alarm Safety", "Permissions"]);
+    ["Sound", "Atmosphere", "Trusted Contacts", "Alarm Safety", "Permissions"]);
   eq(await text(page, "#alarmState"), "ON"); eq(await text(page, "#trustState"), "OFF");
   eq(await page.evaluate(() => document.querySelector("#alarmSwitch").closest(".card").querySelector("p").textContent),
     "Allow alarms to interrupt Focus. Alarms may be used for medication, emergencies, or other safety or health-related purposes.");
@@ -286,6 +304,96 @@ await test("sounds: search appears past 12 options; 'pnik' → did-you-mean Pink
   assert((await text(page, "#soundEmpty")).includes("No matching sounds"));
   eq(errors, []);
   await ctx.close();
+});
+
+/* ================= Atmosphere & audio ================= */
+await test("atmosphere: named Atmosphere in Settings; the background changes as you choose", async () => {
+  const { page, ctx, errors } = await open();
+  await openSettings(page);
+  eq(await page.evaluate(() => document.querySelectorAll(".set-sec h2")[1].textContent), "Atmosphere");
+  eq(await page.evaluate(() => document.getElementById("sceneList").getAttribute("aria-label")), "Atmosphere");
+  const sample = () => page.evaluate(() => { const c = document.getElementById("setScene"); const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    let h = 0; for (let i = 0; i < d.length; i += 997) h = (h * 31 + d[i]) >>> 0; return [c.width > 1, h]; });
+  const [drawn, before] = await sample();
+  assert(drawn, "Settings background is drawn");
+  await click(page, '#sceneList .scene-opt[data-id="aurora"]'); await page.waitForTimeout(120);
+  eq(await page.evaluate(() => document.getElementById("setSceneOld").getAnimations().length), 1, "old view crossfades out");
+  await page.waitForTimeout(800);
+  const [, after] = await sample();
+  assert(before !== after, "background shows the new atmosphere");
+  eq(errors, []);
+  await ctx.close();
+});
+
+await test("sound preview: 5 s with fade in/out; switching never overlaps; re-tap deselects; leaving stops", async () => {
+  const { page, ctx, errors } = await open({ audioProbe: true });
+  await openSettings(page);
+  await click(page, '#soundList .choice[data-id="pink"]'); await page.waitForTimeout(150);
+  eq(await audio(page, "live"), 1, "preview plays");
+  assert(await audio(page, "level") < 0.5, "starts with a fade-in");
+  await page.waitForTimeout(1000);
+  assert(await audio(page, "level") > 0.95, "full level after the fade-in");
+  await page.waitForTimeout(3500);                           // ~4.65 s: fading out
+  const l = await audio(page, "level"); assert(l > 0 && l < 0.95, "fading out near the end: " + l);
+  await page.waitForTimeout(650);                            // ~5.3 s
+  eq(await audio(page, "live"), 0, "silent after 5 seconds");
+
+  await page.evaluate(() => window.__audio.reset());
+  await page.evaluate(async () => {                         // three quick taps, 40 ms apart
+    for (const id of ["brown", "grey", "blue"]) { document.querySelector(`#soundList .choice[data-id="${id}"]`).click(); await new Promise(r => setTimeout(r, 40)); }
+  });
+  await page.waitForTimeout(700);
+  eq(await audio(page, "maxLive"), 1, "never two sounds at once");
+  eq(await audio(page, "starts"), 2, "quick taps skip straight to the last choice");
+  eq(await page.evaluate(() => document.querySelector('#soundList [aria-checked="true"]').dataset.id), "blue");
+
+  await click(page, '#soundList .choice[data-id="blue"]'); await page.waitForTimeout(80);
+  eq(await page.evaluate(() => document.querySelectorAll('#soundList [aria-checked="true"]').length), 0, "re-tap deselects");
+  eq(await page.evaluate(() => JSON.parse(localStorage.getItem("ff.settings.v1")).audio), "none");
+  assert(await audio(page, "live") === 1, "fades out rather than cutting off");
+  await page.waitForTimeout(1000);
+  eq(await audio(page, "live"), 0, "faded out");
+
+  await click(page, '#soundList .choice[data-id="violet"]'); await page.waitForTimeout(500);
+  eq(await audio(page, "live"), 1);
+  await click(page, "#closeSettings"); await page.waitForTimeout(120);
+  eq(await audio(page, "live"), 0, "leaving Settings stops the preview at once");
+  eq(errors, []);
+  await ctx.close();
+});
+
+await test("focus: the sound fades in with the page transition and keeps playing; no sound when deselected", async () => {
+  const { page, ctx, errors } = await open({ audioProbe: true, settings: { v: 1, audio: "pink", scene: "aurora", previewAck: true } });
+  const samples = await page.evaluate(async () => {
+    const out = [], t0 = performance.now(), s = document.getElementById("session");
+    document.getElementById("focusBtn").click();
+    while (performance.now() - t0 < 900) {
+      await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0))); // sample just after each frame
+      out.push([performance.now() - t0, window.__audio.level(), +getComputedStyle(s).opacity]);
+    }
+    return out;
+  });
+  const at = ms => samples.find(x => x[0] >= ms);
+  assert(at(40)[1] < 0.05 && at(40)[2] < 0.05, "both start together from silence/invisible");
+  const trace = JSON.stringify(samples.map(x => x.map(n => +n.toFixed(2))));
+  // Sampled right after each frame: the sound's level matches the page's opacity (in tandem).
+  assert(samples.every(([, a, v]) => Math.abs(a - v) <= 0.1), "sound level tracks the page fade: " + trace);
+  assert(samples.every((x, i) => i === 0 || x[1] >= samples[i - 1][1] - 0.01), "only rises: " + trace);
+  assert(at(850)[1] > 0.95 && at(850)[2] > 0.95, "both finish together");
+  eq(await text(page, "#sessionFoot"), "Pink Noise · Aurora Veil");
+  await page.waitForTimeout(6000);
+  eq(await audio(page, "live"), 1, "still playing after the preview length (continuous)");
+  await click(page, "#timerBtn"); await page.waitForTimeout(600);
+  await click(page, "#endBtn"); await page.waitForTimeout(1300);
+  eq(await audio(page, "live"), 0, "stops when the session ends");
+  await ctx.close();
+
+  const s2 = await open({ audioProbe: true, settings: { v: 1, audio: "none", scene: "aurora", previewAck: true } });
+  await click(s2.page, "#focusBtn"); await s2.page.waitForTimeout(900);
+  eq(await audio(s2.page, "starts"), 0, "no sound chosen → silent Focus");
+  eq(await text(s2.page, "#sessionFoot"), "Aurora Veil");
+  eq([...errors, ...s2.errors], []);
+  await s2.ctx.close();
 });
 
 /* ================= Persistence ================= */

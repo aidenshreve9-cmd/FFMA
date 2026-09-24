@@ -83,7 +83,7 @@ class SessionScreen(c: Context, onTimerTap: () -> Unit) : FrameLayout(c) {
         status.text = (if (silencing) "Notifications silenced · Emergency calls unaffected" else "Do Not Disturb is off · notifications not silenced").uppercase()
         status.setTextColor(if (silencing) Palette.HALO else Palette.WARN)
     }
-    fun setFooter(sound: String, scene: String) { footer.text = "$sound · $scene" }
+    fun setFooter(sound: String, scene: String) { footer.text = if (sound.isEmpty()) scene else "$sound · $scene" }
 }
 
 /** Done: quote card, author, Done button. */

@@ -76,7 +76,7 @@ data class FocusSettings(
 ) {
     /** Falls back to defaults for anything that no longer exists (deleted media, unknown ids). */
     fun validated(userSoundIds: Set<String>, userPictureIds: Set<String>): FocusSettings {
-        val soundOk = sound == Catalog.RANDOM || Catalog.SOUNDS.any { it.id == sound } || sound in userSoundIds
+        val soundOk = sound == Catalog.RANDOM || sound == Catalog.NONE || Catalog.SOUNDS.any { it.id == sound } || sound in userSoundIds
         val sceneOk = scene == Catalog.RANDOM || Catalog.SCENES.any { it.id == scene } || scene in userPictureIds
         return copy(
             sound = if (soundOk) sound else Catalog.DEFAULT_SOUND,

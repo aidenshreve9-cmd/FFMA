@@ -130,6 +130,11 @@ blockquote cite{font-style:normal;color:var(--muted);font-size:13px;letter-spaci
 
 /* ---------- Settings ---------- */
 #settings{padding-inline:0;padding-block:0}
+.set-bg{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.set-bg canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#setSceneOld{opacity:0}
+.set-dim{position:absolute;inset:0;background:linear-gradient(rgba(3,0,12,.62),rgba(3,0,12,.5) 40%,rgba(3,0,12,.7))}
+.set-head,.set-body{position:relative;z-index:1}
 .set-head{display:flex;align-items:center;gap:12px;padding:14px 20px 12px}
 .set-head h1{font-family:var(--serif);font-size:26px;margin:0;font-weight:400}
 .set-body{flex:1;overflow-y:auto;padding:4px 20px 30px;display:flex;flex-direction:column;gap:24px}
@@ -306,6 +311,7 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
 
   <!-- SETTINGS -->
   <section id="settings" class="screen" aria-label="Settings" hidden>
+    <div class="set-bg" aria-hidden="true"><canvas id="setScene"></canvas><canvas id="setSceneOld"></canvas><div class="set-dim"></div></div>
     <div class="set-head">
       <button class="icon-btn" id="closeSettings" aria-label="Back to Focus">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
@@ -325,9 +331,9 @@ form.addc button{min-height:44px;border-radius:12px;border:0;background:linear-g
       </div>
 
       <div class="set-sec">
-        <h2>Scenic view</h2>
-        <div class="search" id="sceneSearch" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><input type="search" id="sceneQuery" placeholder="Search scenic views…" aria-label="Search scenic views" aria-controls="sceneList" autocomplete="off" spellcheck="false"></div>
-        <div class="scenes" id="sceneList" role="radiogroup" aria-label="Scenic view"></div>
+        <h2>Atmosphere</h2>
+        <div class="search" id="sceneSearch" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><input type="search" id="sceneQuery" placeholder="Search atmospheres…" aria-label="Search atmospheres" aria-controls="sceneList" autocomplete="off" spellcheck="false"></div>
+        <div class="scenes" id="sceneList" role="radiogroup" aria-label="Atmosphere"></div>
         <div class="search-empty" id="sceneEmpty" hidden></div>
         <button class="add" id="addPic">＋ Add your own picture</button>
         <input type="file" id="picFile" accept="image/*" hidden>
@@ -596,7 +602,7 @@ async function loadAssets() {
 }
 function validateSelections() {
   const has = id => assets.some(a => a.id === id);
-  const soundIds = SOUNDS.map(s => s.id).concat("random");
+  const soundIds = SOUNDS.map(s => s.id).concat("random", "none");
   if (settings.audio.startsWith("snd:") ? !has(settings.audio) : !soundIds.includes(settings.audio)) settings.audio = "white";
   const sceneIds = SCENES.map(s => s.id).concat("random");
   if (settings.scene.startsWith("img:") ? !has(settings.scene) : !sceneIds.includes(settings.scene)) settings.scene = DEFAULT_SCENE;
@@ -619,6 +625,7 @@ async function addAsset(type, blob, name) {
 async function removeAsset(id, node) {
   try { await dbTx("readwrite", st => st.delete(id)); } catch (e) { toast("Couldn't remove that file."); return; }
   const i = assets.findIndex(a => a.id === id);
+  if (player.voice && player.voice.choice.id === id) releaseSound(0.03); // its preview can't outlive the file
   if (i >= 0) { URL.revokeObjectURL(assets[i].url); assets.splice(i, 1); }
   indexRemove(id.startsWith("img:") ? "scenes" : "sounds", id);
   validateSelections(); saveSettings();
@@ -660,11 +667,12 @@ function setScreen(id) {
   }
   a.style.pointerEvents = "none";
   const out = a.animate(outK, { duration: 480, easing: EASE, fill: "forwards" });
-  b.animate(inK, { duration: 620, delay: 80, easing: EASE, fill: "backwards" });
+  const into = b.animate(inK, { duration: 620, delay: 80, easing: EASE, fill: "backwards" });
   out.onfinish = () => {
     if (visibleScreen !== from) a.hidden = true;
     out.cancel(); a.style.pointerEvents = "";
   };
+  return into; // the incoming page's animation (lets Focus's sound move in step with it)
 }
 const MODALS = ["permSheet", "barrier", "confirmEnd", "donateSheet"];
 function openModal(id) {
@@ -932,12 +940,12 @@ function startSession() {
 
   const sceneChoice = resolveScene();
   const soundChoice = resolveSound();
-  $("sessionFoot").textContent = soundChoice.name + " · " + sceneChoice.name;
+  $("sessionFoot").textContent = soundChoice ? soundChoice.name + " · " + sceneChoice.name : sceneChoice.name;
 
   startScene(sceneChoice);
-  setScreen("session");
+  const pageIn = setScreen("session");
   say(`Focus started. ${minutes} minutes.`);
-  startAudio(soundChoice);
+  startSessionSound(soundChoice, pageIn); // fades in with the page transition
   acquireWakeLock();
   lastAnnounced = null;
   tick();
@@ -976,7 +984,7 @@ function finish(natural) {
   clearInterval(tickTimer); tickTimer = null;
   distraction.endDistractionReduction();
   distraction.restorePreviousSystemState();
-  stopAudio();
+  releaseSound(0.9);
   releaseWakeLock();
   setActive("session", false);
   closeModals();
@@ -1017,7 +1025,7 @@ async function acquireWakeLock() {
 function releaseWakeLock() { try { wakeLock && wakeLock.release(); } catch (e) {} wakeLock = null; }
 
 /* ================= Audio: eight noise colours ================= */
-let ac = null, noiseSrc = null, noiseGain = null, userAudio = null, fadeTimer = null;
+let ac = null;
 const bufCache = {};
 function actx() {
   if (!ac) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; ac = new C(); }
@@ -1065,47 +1073,122 @@ function colourChain(ctx, kind) {
     default:       return [];
   }
 }
-function resolveSound() {
-  let id = settings.audio;
+function soundChoiceFor(id) {
   if (id === "random") {
     const pool = [...SOUNDS.map(s => s.id), ...assets.filter(a => a.type === "snd").map(a => a.id)];
     id = pool[Math.floor(Math.random() * pool.length)];
   }
   const b = SOUNDS.find(s => s.id === id); if (b) return { id, name: b.name, gain: b.gain };
   const a = assets.find(x => x.id === id);
-  return a ? { id, name: a.name, url: a.url } : { id: "white", name: "White Noise", gain: SOUNDS[0].gain };
+  return a ? { id, name: a.name, url: a.url } : null;
 }
-function startAudio(choice) {
-  stopAudio(true);
-  if (choice.url) {
-    userAudio = new Audio(choice.url);
-    userAudio.loop = true; userAudio.volume = 0;
-    userAudio.play().catch(() => toast("Couldn't play that sound. Try another in Settings."));
-    let v = 0; fadeTimer = setInterval(() => { v = Math.min(1, v + 0.05); if (userAudio) userAudio.volume = v; if (v >= 1) clearInterval(fadeTimer); }, 110);
-    return;
-  }
-  const ctx = actx(); if (!ctx) { toast("Sound isn't available in this browser."); return; }
+// null = no sound chosen (Focus is silent).
+function resolveSound() {
+  if (settings.audio === "none") return null;
+  return soundChoiceFor(settings.audio) || { id: "white", name: "White Noise", gain: SOUNDS[0].gain };
+}
+
+// One sound at a time: source → colour filters → loudness → fade → speakers.
+// Fades are scheduled on the audio clock; the current level is tracked so any fade can
+// start smoothly from wherever the previous one had got to.
+const PREVIEW_MS = 5000, PREVIEW_FADE = 0.9, SWITCH_FADE = 0.45;
+const easeInOut = k => 0.5 - 0.5 * Math.cos(Math.PI * k);
+function makeVoice(choice) {
+  const ctx = actx(); if (!ctx) { toast("Sound isn't available in this browser."); return null; }
   try {
-    noiseSrc = ctx.createBufferSource(); noiseSrc.buffer = noiseBuffer(ctx, choice.id); noiseSrc.loop = true;
-    noiseGain = ctx.createGain(); noiseGain.gain.setValueAtTime(0, ctx.currentTime);
-    noiseGain.gain.linearRampToValueAtTime(choice.gain, ctx.currentTime + 2.2);
-    let node = noiseSrc;
-    colourChain(ctx, choice.id).forEach(fl => { node.connect(fl); node = fl; });
-    node.connect(noiseGain).connect(ctx.destination);
-    noiseSrc.start();
-  } catch (e) { toast("Couldn't start the sound."); }
+    const fade = ctx.createGain(); fade.gain.value = 0; fade.connect(ctx.destination);
+    const v = { choice, fade, lvl: { from: 0, to: 0, t0: 0, t1: 0, ease: easeInOut } };
+    if (choice.url) {
+      const el = new Audio(choice.url); el.loop = true;
+      const src = ctx.createMediaElementSource(el); src.connect(fade);
+      el.play().catch(() => toast("Couldn't play that sound. Try another in Settings."));
+      v.stop = () => { el.pause(); el.removeAttribute("src"); src.disconnect(); fade.disconnect(); };
+    } else {
+      const src = ctx.createBufferSource(); src.buffer = noiseBuffer(ctx, choice.id); src.loop = true;
+      const loud = ctx.createGain(); loud.gain.value = choice.gain;
+      let node = src;
+      colourChain(ctx, choice.id).forEach(fl => { node.connect(fl); node = fl; });
+      node.connect(loud).connect(fade);
+      src.start();
+      v.stop = () => { try { src.stop(); } catch (e) {} src.disconnect(); fade.disconnect(); };
+    }
+    return v;
+  } catch (e) { toast("Couldn't start the sound."); return null; }
 }
-function stopAudio(immediate) {
-  clearInterval(fadeTimer);
-  if (userAudio) { const a = userAudio; userAudio = null; a.pause(); a.src = ""; }
-  if (noiseSrc && ac) {
-    const s = noiseSrc, g = noiseGain; noiseSrc = null; noiseGain = null;
-    try {
-      g.gain.cancelScheduledValues(ac.currentTime);
-      g.gain.setTargetAtTime(0, ac.currentTime, immediate ? 0.02 : 0.35);
-      setTimeout(() => { try { s.stop(); s.disconnect(); g.disconnect(); } catch (e) {} }, immediate ? 60 : 900);
-    } catch (e) {}
-  }
+function levelOf(v) {
+  const L = v.lvl, t = ac.currentTime;
+  if (t >= L.t1) return L.to; if (t <= L.t0) return L.from;
+  return L.from + (L.to - L.from) * L.ease((t - L.t0) / (L.t1 - L.t0));
+}
+function fadeVoice(v, to, secs, delay = 0, ease = easeInOut) {
+  const p = v.fade.gain, now = ac.currentTime, from = levelOf(v), t0 = now + delay;
+  v.lvl = { from, to, t0, t1: t0 + secs, ease };
+  p.cancelScheduledValues(now); p.setValueAtTime(from, now);
+  if (delay) p.setValueAtTime(from, t0);
+  const n = 16; // a smooth curve made of short linear steps
+  for (let i = 1; i <= n; i++) p.linearRampToValueAtTime(from + (to - from) * ease(i / n), t0 + secs * i / n);
+}
+const player = { voice: null, pending: null, timers: [] };
+function later(ms, fn) { player.timers.push(setTimeout(fn, ms)); }
+function clearLater() { player.timers.forEach(clearTimeout); player.timers = []; }
+// Fades the current sound out and lets it go; nothing is left playing afterwards.
+function releaseSound(secs) {
+  clearLater(); player.pending = null;
+  const v = player.voice; if (!v) return;
+  player.voice = null;
+  fadeVoice(v, 0, secs);
+  setTimeout(v.stop, secs * 1000 + 60);
+}
+// Settings preview: fade in, hold, fade out, silent at exactly 5 s.
+function beginPreview(choice) {
+  const v = makeVoice(choice); if (!v) return;
+  player.voice = v;
+  fadeVoice(v, 1, PREVIEW_FADE);
+  later(PREVIEW_MS - PREVIEW_FADE * 1000, () => {
+    fadeVoice(v, 0, PREVIEW_FADE);
+    later(PREVIEW_FADE * 1000, () => { if (player.voice === v) { player.voice = null; v.stop(); } });
+  });
+}
+// Switching sounds: the current one fades out; at the midpoint (silence) it stops and the
+// next one starts fading in. Quick taps only change which sound comes next, so two sounds
+// never overlap and nothing clicks.
+function previewSound(choice) {
+  clearLater();
+  const v = player.voice;
+  if (!v) { beginPreview(choice); return; }
+  player.pending = choice;
+  // Proportional to the current level, but never shorter than 120 ms, so a burst of taps
+  // lands inside one fade and only the last choice plays.
+  const secs = Math.max(0.12, SWITCH_FADE * levelOf(v));
+  fadeVoice(v, 0, secs);
+  later(secs * 1000, () => {
+    const next = player.pending; player.pending = null;
+    if (player.voice === v) { player.voice = null; v.stop(); }
+    if (next) beginPreview(next);
+  });
+}
+// Re-tapping the chosen sound: fade out from wherever it is.
+function fadeOutPreview() { if (player.voice) releaseSound(Math.max(0.03, PREVIEW_FADE * levelOf(player.voice))); else { clearLater(); player.pending = null; } }
+// Focus: the sound fades in in step with the page transition. Every frame, its level is
+// set to the page animation's own progress (same delay, duration and easing), so the
+// sound can't run ahead of or behind what's on screen. Then it plays on a loop until the
+// session ends. Without animation: a short click-free fade.
+const linear = k => k;
+function startSessionSound(choice, pageIn) {
+  releaseSound(0.03);
+  if (!choice) return;
+  const v = makeVoice(choice); if (!v) return;
+  player.voice = v;
+  if (!pageIn || !pageIn.effect) { fadeVoice(v, 1, 0.25); return; }
+  const step = () => {
+    if (player.voice !== v || v.lvl.to >= 1) return;
+    const live = pageIn.playState === "running" || pageIn.playState === "pending";
+    const k = live ? Math.min(1, Math.max(0, pageIn.effect.getComputedTiming().progress || 0)) : 1;
+    fadeVoice(v, k, 0.03, 0, linear);
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+  setTimeout(() => { if (player.voice === v && v.lvl.to < 1) fadeVoice(v, 1, 0.25); }, 1500); // e.g. page hidden mid-transition
 }
 function playChime() {
   const ctx = actx(); if (!ctx) return;
@@ -1499,15 +1582,15 @@ function paintImage(c, w, h, img) {
   c.fillStyle = "#000"; c.fillRect(0, 0, w, h);
   c.drawImage(img, (w - iw) / 2, (h - ih) / 2, iw, ih);
 }
-function resolveScene() {
-  let id = settings.scene;
+function resolveScene() { return sceneChoiceFor(settings.scene) || { id: DEFAULT_SCENE, name: SCENES[0].name }; }
+function sceneChoiceFor(id) {
   if (id === "random") {
     const pool = [...SCENES.map(s => s.id), ...assets.filter(a => a.type === "img").map(a => a.id)];
     id = pool[Math.floor(Math.random() * pool.length)];
   }
   const b = SCENES.find(s => s.id === id); if (b) return { id, name: b.name };
   const a = assets.find(x => x.id === id);
-  return a ? { id, name: a.name, url: a.url } : { id: DEFAULT_SCENE, name: SCENES[0].name };
+  return a ? { id, name: a.name, url: a.url } : null;
 }
 let sceneImg = null, sceneChoice = null;
 function drawScene(t) {
@@ -1562,7 +1645,8 @@ function frame(now) {
   const t = animate ? (now - T0) / 1000 : 20;
   const onSession = visibleScreen === "session" || !$("session").hidden;
   if (onSession && sceneChoice && (!sceneChoice.url || wasDirty)) drawScene(t);
-  if (visibleScreen !== "session" || !$("home").hidden || !$("done").hidden || !$("settings").hidden) drawNebula(t);
+  if ((visibleScreen !== "session" && visibleScreen !== "settings") || !$("home").hidden || !$("done").hidden) drawNebula(t);
+  if (!$("settings").hidden && setBg && (!setBg.url || wasDirty)) drawAtmosphere(t);
   if (!$("home").hidden) orb("home").draw(t, act.home.v);
   if (!$("session").hidden) orb("session").draw(t, act.session.v);
   if (!$("done").hidden) orb("done").draw(t, 0);
@@ -1583,7 +1667,7 @@ function renderSound() {
     ...assets.filter(a => a.type === "snd").map(a => [a.id, a.name, "YOURS"])];
   opts.forEach(([id, name, kind]) => {
     const choice = el("button", { class: "choice", role: "radio", "aria-checked": String(settings.audio === id),
-      onclick: () => selectSound(id) },
+      onclick: () => tapSound(id) },
       [el("span", { class: "radio", "aria-hidden": "true" }), el("span", { class: "nm", text: name }), el("span", { class: "kind", text: kind })]);
     choice.dataset.id = id;
     let row = choice;
@@ -1595,15 +1679,43 @@ function renderSound() {
   soundFilter.sync(opts.length);
 }
 // Update selection in place so the radio ember animates instead of the list re-rendering.
-function selectSound(id) {
-  settings.audio = id; saveSettings();
-  $("soundList").querySelectorAll(".choice").forEach(b => b.setAttribute("aria-checked", String(b.dataset.id === id)));
+// Tapping a sound selects it and plays a 5-second preview; tapping the chosen sound again
+// fades it out and deselects it (Focus is then silent). Search's Enter always selects.
+function tapSound(id, fromSearch) {
+  const deselect = settings.audio === id && !fromSearch;
+  settings.audio = deselect ? "none" : id; saveSettings();
+  $("soundList").querySelectorAll(".choice").forEach(b => b.setAttribute("aria-checked", String(b.dataset.id === settings.audio)));
+  if (deselect) { fadeOutPreview(); return; }
+  const c = soundChoiceFor(id); if (c) previewSound(c);
 }
 function selectScene(id) {
   settings.scene = id; saveSettings();
   $("sceneList").querySelectorAll(".scene-opt").forEach(b => b.setAttribute("aria-checked", String(b.dataset.id === id)));
+  showAtmosphere(id, true);
+}
+// Settings' background is the chosen atmosphere, and changes (crossfading) as you choose.
+let setBg = null, setBgImg = null, setBgFor = null;
+function showAtmosphere(id, animate) {
+  const cur = $("setScene"), old = $("setSceneOld");
+  if (animate && setBg && motionOK() && cur.width > 1) {
+    const { c, w, h } = fit(old, 1);
+    c.drawImage(cur, 0, 0, w, h);
+    old.getAnimations().forEach(x => x.cancel());
+    old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 700, easing: EASE });
+  }
+  setBgFor = id;
+  setBg = sceneChoiceFor(id) || { id: DEFAULT_SCENE, name: SCENES[0].name };
+  setBgImg = null;
+  if (setBg.url) { setBgImg = new Image(); setBgImg.onload = markDirty; setBgImg.src = setBg.url; }
+  markDirty();
+}
+function drawAtmosphere(t) {
+  const { c, w, h } = fit($("setScene"), 1);
+  if (setBg.url) { if (setBgImg && setBgImg.complete && setBgImg.naturalWidth) paintImage(c, w, h, setBgImg); else { c.fillStyle = "#000"; c.fillRect(0, 0, w, h); } return; }
+  PAINT[setBg.id](c, w, h, t);
 }
 function renderScenes() {
+  if (setBgFor !== settings.scene) showAtmosphere(settings.scene, !$("settings").hidden);
   const list = $("sceneList"); list.textContent = "";
   const tile = (id, name, media) => {
     const b = el("button", { class: "scene-opt", role: "radio", "aria-checked": String(settings.scene === id), "aria-label": name,
@@ -1784,12 +1896,12 @@ function createFilter(cfg) {
     apply,
   };
 }
-// Browsing is easier for short lists: sounds and scenic views get search only past 12 options.
+// Browsing is easier for short lists: sounds and atmospheres get search only past 12 options.
 // Trusted Contacts get search as soon as one exists (as specified).
 const soundFilter = createFilter({ collection: "sounds", box: "soundSearch", input: "soundQuery", list: "soundList", empty: "soundEmpty",
-  singular: "sound", plural: "sounds", threshold: 13, focusSel: ".choice", select: r => { const b = r.matches(".choice") ? r : r.querySelector(".choice"); b.click(); b.focus(); } });
+  singular: "sound", plural: "sounds", threshold: 13, focusSel: ".choice", select: r => { const b = r.matches(".choice") ? r : r.querySelector(".choice"); tapSound(b.dataset.id, true); b.focus(); } });
 const sceneFilter = createFilter({ collection: "scenes", box: "sceneSearch", input: "sceneQuery", list: "sceneList", empty: "sceneEmpty",
-  singular: "scenic view", plural: "scenic views", threshold: 13, focusSel: ".scene-opt", select: r => { const b = r.matches(".scene-opt") ? r : r.querySelector(".scene-opt"); b.click(); b.focus(); } });
+  singular: "atmosphere", plural: "atmospheres", threshold: 13, focusSel: ".scene-opt", select: r => { const b = r.matches(".scene-opt") ? r : r.querySelector(".scene-opt"); b.click(); b.focus(); } });
 // Selecting a contact result moves focus to that contact's actions (its Remove button).
 const contactFilter = createFilter({ collection: "trustedContacts", box: "contactSearch", input: "contactQuery", list: "contactList", empty: "contactEmpty",
   singular: "contact", plural: "contacts", threshold: 1, focusSel: ".contact", enterOnRow: true, select: r => { const b = r.querySelector(".rm"); (b || r).focus(); } });
@@ -1802,8 +1914,9 @@ function say(msg) {
   sayT = setTimeout(() => { n.textContent = msg; }, 40);
 }
 
-$("openSettings").onclick = () => { if (state !== "IDLE") return; renderSettings(); setScreen("settings"); $("closeSettings").focus({ preventScroll: true }); };
-$("closeSettings").onclick = () => { setScreen("home"); $("openSettings").focus({ preventScroll: true }); };
+$("openSettings").onclick = () => { if (state !== "IDLE") return; renderSettings(); showAtmosphere(settings.scene, false); setScreen("settings"); $("closeSettings").focus({ preventScroll: true }); };
+// Leaving Settings stops any preview at once (a 30 ms fade only to avoid a click).
+$("closeSettings").onclick = () => { releaseSound(0.03); setScreen("home"); $("openSettings").focus({ preventScroll: true }); };
 $("alarmSwitch").onclick = () => { settings.alarmSafety = !settings.alarmSafety; saveSettings(); renderAlarm(); say("Alarm Safety " + (settings.alarmSafety ? "on." : "off.")); };
 $("trustSwitch").onclick = () => { settings.trustedOn = !settings.trustedOn; saveSettings(); renderTrust(); say("Trusted Contacts " + (settings.trustedOn ? "on." : "off.")); };
 $("reviewPerm").onclick = showPermSheet;

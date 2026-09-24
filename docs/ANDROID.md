@@ -69,7 +69,9 @@ contacts permission; starring during Focus does.
   versions, or any shader failure, use the 2D fallback. Late frames lower the sample count (20 → 14 → 10).
 - **Scenes:** the eight views are drawn on Canvas (same seeds as the browser).
 - **Sounds:** eight noise colours generated live on an `AudioTrack` (media volume only — no slider);
-  your own sounds via `MediaPlayer`; soft three-note chime on natural finish only.
+  your own sounds via `MediaPlayer`; soft three-note chime on natural finish only. Settings previews
+  and the Focus fade-in are described in `docs/ARCHITECTURE.md` (Atmosphere and sound). Leaving the
+  app also stops a Settings preview.
 - **Storage:** app-private preferences and files; pictures shrunk to 1100 px (JPEG 82); sounds ≤ 20 MB
   and validated as audio; backups disabled (`allowBackup="false"`).
 - **Accessibility:** TalkBack roles and states (switch, radio, button, headings, pane titles), the orb

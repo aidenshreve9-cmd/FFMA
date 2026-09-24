@@ -35,12 +35,28 @@ Changes the spec didn't require were put to you. What you chose:
 | Android extras: bundled fonts / no internet, backups off, notification permission ask | No preference | Kept. |
 | Trusted Contacts on Android via temporary starring (C10) | No preference | Kept. |
 
+## Atmosphere & audio patch (24 Sep 2026)
+
+Built as specified: "Scenic view" is now **Atmosphere**; Settings' background shows the chosen
+atmosphere and changes as you pick; 5-second sound previews with fades; crossfaded switching that
+changes over at the silent midpoint; re-tapping the chosen sound deselects it; leaving Settings stops
+the preview; the Focus sound plays on a loop and fades in with the page transition. Where the patch
+left something open:
+
+| # | Question | What was done (smallest change) |
+|---|----------|---------------------------------|
+| A1 | "Update the app's background… as options are selected in Settings" — Settings only, or Home too? | Settings' own background shows the atmosphere (that is where you choose). Home keeps its near-black nebula so the orb stays the focus. **Needs your OK** — Home can show it too. |
+| A2 | Re-tapping deselects the sound. Then what does Focus play? | Nothing: "no sound" is saved and Focus is silent (the footer then shows only the atmosphere). Tapping any sound selects again. |
+| A3 | "Crossfade" vs. "stop and start at the midpoint so sounds never overlap". | The midpoint rule wins: the old sound fades out to silence, stops, and the new one fades in. So there is no moment with both playing. |
+| A4 | Preview for Random and for your own sounds. | Random previews one randomly picked sound (Focus picks again each session). Your own sounds preview like the built-in ones. |
+| A5 | Search's Enter on the already-chosen sound. | Enter always selects (and previews); only a tap deselects. |
+
 ## Choices made so the app works (carried over, still open)
 
 - **Slide direction:** sliding left = next duration (content moves right-to-left), right = previous.
 - **Defaults:** Alarm Safety ON (safety), Trusted Contacts OFF.
 - **Black Noise:** a quiet sub-bass rumble (strictly, "black noise" means silence).
-- **Default scenic view:** Quantum Nebula.
+- **Default atmosphere:** Quantum Nebula.
 - **Done screen:** shows the quote's author; early end says "Session ended".
 - **Buy Me a Coffee:** no link yet; the button explains that and does nothing.
 - **Quote wording:** still to be checked against public-domain translations before release.

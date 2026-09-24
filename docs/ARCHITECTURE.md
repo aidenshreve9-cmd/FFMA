@@ -54,7 +54,7 @@ failure returns no results and can never stop a session from starting (tested in
 
 | Model | Fields | Persisted? |
 |-------|--------|------------|
-| Settings | sound, scene, alarmSafety (default ON), trustedContactsOn (default OFF), contacts, permissionSheetSeen (Android) / previewAck (browser) | Yes, on the device |
+| Settings | sound (or "none"), scene (atmosphere), alarmSafety (default ON), trustedContactsOn (default OFF), contacts, permissionSheetSeen (Android) / previewAck (browser) | Yes, on the device |
 | Timer duration | 15/30/45/60 | **Never** — every launch starts at 15 |
 | TrustedContact | id, name, number (as typed), normalized (digits), lookupKey? (Android) | Yes, on the device |
 | FocusSession | minutes, startedAt, endAt = startedAt + minutes | Only while running, for recovery |
@@ -67,6 +67,23 @@ A session stores a **fixed end timestamp**. Remaining time is always `endAt − 
 minutes rounded up ("1 min" until the final second), with the arc on the same 60-minute face as Home.
 Completion and cleanup run **exactly once** (`finishOnce()`), whichever path gets there first:
 natural end, early end, service timer, recovery.
+
+## Atmosphere and sound
+
+- **Settings background:** the chosen atmosphere is drawn behind Settings (dimmed so text stays
+  readable) and crossfades (0.7 s) as you pick another. Home keeps its nebula.
+- **Preview:** tapping a sound in Settings plays a 5-second preview: 0.9 s fade in, hold, 0.9 s fade
+  out. Only one sound ever plays. Switching: the current sound fades out (up to 0.45 s, shorter if
+  it is still quiet, never under 0.12 s); at that midpoint, in silence, it stops and the new one starts
+  fading in. Taps during a switch only change which sound comes next. Tapping the chosen sound again
+  fades it out and deselects it ("none": Focus is silent). Leaving Settings stops the preview at once
+  (30 ms fade, only to avoid a click). Random previews one randomly picked sound.
+- **Focus:** the sound starts silent and, every frame of the page transition into Focus, its level
+  is set to the incoming page's opacity — same delay, duration and easing — then it loops until
+  the session ends. Without animation, a 0.25 s fade.
+- Browser: Web Audio gain automation. Android: `SoundPreview` (core, unit-tested) drives
+  `NoiseEngine` / `UserSoundPlayer`, whose level follows a ramp shaped for when each block is heard;
+  `SessionAudio` links the activity's page transition to the foreground service's sound.
 
 ## Platform adapter
 

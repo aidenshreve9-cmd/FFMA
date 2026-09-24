@@ -14,10 +14,48 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
 
-/** Anything that plays during a session. Volume is only ever the phone's media volume. */
+/** A level change scheduled on the clock (nanoseconds), read by whichever thread makes the sound. */
+class LevelRamp(val from: Float, val to: Float, val startNs: Long, val durNs: Long, val curve: (Float) -> Float) {
+    fun at(ns: Long): Float = when {
+        durNs <= 0L || ns >= startNs + durNs -> to
+        ns <= startNs -> from
+        else -> from + (to - from) * curve((ns - startNs).toFloat() / durNs)
+    }
+    val endNs get() = startNs + durNs
+}
+
+val EASE_IN_OUT: (Float) -> Float = { k -> (0.5 - 0.5 * cos(PI * k)).toFloat() }
+val LINEAR: (Float) -> Float = { it }
+
+/**
+ * Anything that plays: a session sound or a Settings preview. It starts silent, and its level
+ * only ever changes through smooth fades. Loudness is otherwise only the phone's media volume.
+ */
 interface SoundOutput {
     fun start()
-    fun stop(immediate: Boolean)
+    fun fadeTo(level: Float, ms: Long, curve: (Float) -> Float = EASE_IN_OUT)
+    fun level(): Float
+    /** Fades to silence over [fadeMs], then releases the player. */
+    fun stop(fadeMs: Long)
+}
+
+abstract class FadingOutput : SoundOutput {
+    @Volatile protected var ramp = LevelRamp(0f, 0f, 0L, 0L, LINEAR)
+    @Volatile protected var stopping = false
+    override fun level() = ramp.at(System.nanoTime())
+    override fun fadeTo(level: Float, ms: Long, curve: (Float) -> Float) {
+        if (stopping) return   // once stopping, nothing can bring it back up
+        val now = System.nanoTime()
+        ramp = LevelRamp(ramp.at(now), level.coerceIn(0f, 1f), now, ms * 1_000_000L, curve)
+        onFade()
+    }
+    protected open fun onFade() {}
+    protected fun fadeOutForStop(fadeMs: Long) {
+        val now = System.nanoTime()
+        ramp = LevelRamp(ramp.at(now), 0f, now, fadeMs * 1_000_000L, EASE_IN_OUT)
+        stopping = true
+        onFade()
+    }
 }
 
 private val MEDIA_ATTRIBUTES: AudioAttributes = AudioAttributes.Builder()
@@ -98,34 +136,37 @@ class NoiseColor(private val kind: String, private val sr: Int, seed: Long = 1L)
     }
 }
 
-/** Streams a noise colour to a media-volume AudioTrack with a 2.2 s fade-in. */
-class NoiseEngine(private val kind: String, private val gain: Float) : SoundOutput {
+/**
+ * Streams a noise colour to a media-volume AudioTrack. Its level follows [ramp]; each block is
+ * shaped for the moment it will actually be heard (the track's buffer is taken into account).
+ */
+class NoiseEngine(private val kind: String, private val gain: Float) : FadingOutput() {
     @Volatile private var running = false
-    @Volatile private var fadeOutMs = 0
-    private var thread: Thread? = null
+    @Volatile private var stopAtNs = Long.MAX_VALUE
 
     override fun start() {
         if (running) return
         running = true
-        thread = Thread({ run() }, "focus-noise").apply { priority = Thread.MAX_PRIORITY; start() }
+        Thread({ run() }, "focus-noise").apply { priority = Thread.MAX_PRIORITY; start() }
     }
 
-    override fun stop(immediate: Boolean) {
-        fadeOutMs = if (immediate) 20 else 350
-        running = false
-        thread?.join(if (immediate) 200L else 1200L)
-        thread = null
+    override fun stop(fadeMs: Long) {
+        if (!running) return
+        fadeOutForStop(fadeMs)
+        stopAtNs = System.nanoTime() + fadeMs * 1_000_000L + LATENCY_NS
     }
 
     private fun run() {
-        val sr = 48_000
+        val sr = SAMPLE_RATE
         val minBuf = AudioTrack.getMinBufferSize(sr, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_FLOAT)
-        val track = AudioTrack.Builder()
-            .setAudioAttributes(MEDIA_ATTRIBUTES)
-            .setAudioFormat(AudioFormat.Builder().setSampleRate(sr).setEncoding(AudioFormat.ENCODING_PCM_FLOAT).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
-            .setBufferSizeInBytes(maxOf(minBuf, sr / 5 * 4))
-            .setTransferMode(AudioTrack.MODE_STREAM)
-            .build()
+        val track = try {
+            AudioTrack.Builder()
+                .setAudioAttributes(MEDIA_ATTRIBUTES)
+                .setAudioFormat(AudioFormat.Builder().setSampleRate(sr).setEncoding(AudioFormat.ENCODING_PCM_FLOAT).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
+                .setBufferSizeInBytes(maxOf(minBuf, BUFFER_FRAMES * 4))
+                .setTransferMode(AudioTrack.MODE_STREAM)
+                .build()
+        } catch (e: RuntimeException) { running = false; return }
         try {
             val gen = NoiseColor(kind, sr, System.nanoTime())
             // Normalize each colour to the same RMS before the per-colour gain, so switching sounds doesn't jump in loudness.
@@ -133,37 +174,47 @@ class NoiseEngine(private val kind: String, private val gain: Float) : SoundOutp
             repeat(sr) { val v = gen.next(); sum += v * v }
             val norm = 0.14 / maxOf(1e-6, sqrt(sum / sr))
             val buf = FloatArray(1024)
-            val fadeIn = (2.2 * sr).toInt()
-            var n = 0L
+            val blockNs = buf.size * 1_000_000_000L / sr
             track.play()
             while (running) {
+                val t = System.nanoTime()
+                if (t >= stopAtNs) break
+                val r = ramp
+                val e0 = r.at(t + LATENCY_NS); val e1 = r.at(t + LATENCY_NS + blockNs)
                 for (i in buf.indices) {
-                    val env = if (n < fadeIn) n.toDouble() / fadeIn else 1.0
-                    buf[i] = (gen.next() * norm * gain * env).toFloat().coerceIn(-1f, 1f); n++
+                    val env = e0 + (e1 - e0) * i / buf.size
+                    buf[i] = (gen.next() * norm * gain * env).toFloat().coerceIn(-1f, 1f)
                 }
                 track.write(buf, 0, buf.size, AudioTrack.WRITE_BLOCKING)
-            }
-            // Short exponential fade-out so stopping never clicks.
-            val outSamples = sr * fadeOutMs / 1000
-            var k = 0
-            while (k < outSamples) {
-                val m = minOf(buf.size, outSamples - k)
-                for (i in 0 until m) buf[i] = (gen.next() * norm * gain * exp(-5.0 * (k + i) / outSamples)).toFloat()
-                track.write(buf, 0, m, AudioTrack.WRITE_BLOCKING); k += m
             }
         } catch (e: RuntimeException) {
             // Audio failure must not end the session; the timer and silencing keep working.
         } finally {
+            running = false
             runCatching { track.stop() }
             track.release()
         }
     }
+
+    private companion object {
+        const val SAMPLE_RATE = 48_000
+        const val BUFFER_FRAMES = SAMPLE_RATE / 12                    // ~83 ms: steady, yet close to the picture
+        const val LATENCY_NS = BUFFER_FRAMES * 1_000_000_000L / SAMPLE_RATE
+    }
 }
 
-/** Plays one of the person's own sounds on a loop from app-private storage. */
-class UserSoundPlayer(private val path: String) : SoundOutput {
+/** Plays one of the person's own sounds on a loop from app-private storage. Call from the main thread. */
+class UserSoundPlayer(private val path: String) : FadingOutput() {
     private var player: MediaPlayer? = null
     private val handler = Handler(Looper.getMainLooper())
+    private val tick = object : Runnable {
+        override fun run() {
+            val p = player ?: return
+            val v = level()
+            runCatching { p.setVolume(v, v) }
+            if (System.nanoTime() < ramp.endNs + 20_000_000L) handler.postDelayed(this, 16)
+        }
+    }
 
     override fun start() {
         try {
@@ -175,28 +226,31 @@ class UserSoundPlayer(private val path: String) : SoundOutput {
             p.prepare()
             p.start()
             player = p
-            fade(0f, 1f, 2200)
         } catch (e: Exception) {
-            // Missing or unreadable file: fall back to silence rather than crash; the session continues.
+            // Missing or unreadable file: silence rather than a crash; the session continues.
             player?.release(); player = null
         }
     }
 
-    override fun stop(immediate: Boolean) {
-        val p = player ?: return
-        player = null
-        if (immediate) { runCatching { p.stop() }; p.release(); return }
-        fade(1f, 0f, 350, p) { runCatching { p.stop() }; p.release() }
-    }
+    override fun onFade() { handler.removeCallbacks(tick); handler.post(tick) }
 
-    private fun fade(from: Float, to: Float, ms: Int, target: MediaPlayer? = player, done: (() -> Unit)? = null) {
-        val steps = 20
-        for (i in 1..steps) handler.postDelayed({
-            val v = from + (to - from) * i / steps
-            runCatching { target?.setVolume(v, v) }
-            if (i == steps) done?.invoke()
-        }, (ms.toLong() * i) / steps)
+    override fun stop(fadeMs: Long) {
+        val p = player ?: return
+        fadeOutForStop(fadeMs)
+        handler.postDelayed({
+            handler.removeCallbacks(tick)
+            if (player === p) player = null
+            runCatching { p.stop() }; p.release()
+        }, fadeMs + 20)
     }
+}
+
+/** Connects the Focus page transition (in the activity) to the session sound (in the service). */
+object SessionAudio {
+    @Volatile var output: SoundOutput? = null
+    /** How far the page transition has got; a session sound that starts late begins from here. */
+    @Volatile var target = 1f
+    fun follow(level: Float, ms: Long) { target = level; output?.fadeTo(level, ms, LINEAR) }
 }
 
 /** Soft three-note chime (C5, E5, G5) for a natural finish only. */

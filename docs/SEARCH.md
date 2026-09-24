@@ -11,7 +11,7 @@ use the same scores and rules, and are tested against the same corpus.
 |------|---------------------------|-----|
 | Trusted Contacts | As soon as one contact exists | Explicit spec rule (see DECISIONS C4) |
 | Sounds | More than 12 options (8 built-in + Random + 4 of your own) | Browsing is easier for short lists |
-| Scenic views | More than 12 options | Same |
+| Atmospheres | More than 12 options | Same |
 | Home | **Never** | Core principle |
 
 ## Pipeline

@@ -111,12 +111,21 @@ object Catalog {
         Scene("web", "Dark Matter Web"), Scene("void", "Ethereal Void"),
     )
     const val RANDOM = "random"
+    /** No sound: the chosen sound was tapped again in Settings, which deselects it. Focus is then silent. */
+    const val NONE = "none"
     const val DEFAULT_SOUND = "white"
     const val DEFAULT_SCENE = "quantum"
     const val USER_SOUND_PREFIX = "snd:"
     const val USER_PICTURE_PREFIX = "img:"
 
     /** Random picks fresh each session from built-ins plus the person's own files. */
+    /**
+     * Settings: tapping a sound selects it; tapping the chosen sound again deselects it ([NONE]).
+     * Choosing from search (Enter) always selects.
+     */
+    fun soundAfterTap(current: String, tapped: String, fromSearch: Boolean = false): String =
+        if (current == tapped && !fromSearch) NONE else tapped
+
     fun pickSound(choice: String, userSoundIds: List<String>, rng: Random = Random): String =
         if (choice != RANDOM) choice else (SOUNDS.map { it.id } + userSoundIds).random(rng)
 

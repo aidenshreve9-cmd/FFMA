@@ -18,8 +18,8 @@ no cloud. Settings, contacts, sounds and pictures stay on your device.
 ## Test it
 ```bash
 npm test                 # 29 search tests (Node, no dependencies)
-npm run test:ui          # 16 browser UI tests (Playwright)
-cd android && ./gradlew -Pff.coreOnly=true :core:test      # 29 Kotlin core tests
+npm run test:ui          # 19 browser UI tests (Playwright)
+cd android && ./gradlew -Pff.coreOnly=true :core:test      # 34 Kotlin core tests
 cd android && ./gradlew :app:testDebugUnitTest             # Robolectric Do Not Disturb tests
 ```
 

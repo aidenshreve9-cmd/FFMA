@@ -19,6 +19,7 @@ import android.os.Looper
 import app.focusfriend.MainActivity
 import app.focusfriend.audio.Chime
 import app.focusfriend.audio.NoiseEngine
+import app.focusfriend.audio.SessionAudio
 import app.focusfriend.audio.SoundOutput
 import app.focusfriend.audio.UserSoundPlayer
 import app.focusfriend.core.FocusSession
@@ -173,7 +174,7 @@ class FocusService : Service() {
                 }
                 val soundId = store.soundId() ?: "white"
                 val builtIn = app.focusfriend.core.Catalog.SOUNDS.firstOrNull { it.id == soundId }
-                FocusRuntime.adopt(ActiveSession(s, soundId, builtIn?.name ?: "Your sound", store.soundPath(), builtIn?.gain ?: 1f,
+                FocusRuntime.adopt(ActiveSession(s, soundId, builtIn?.name ?: if (soundId == app.focusfriend.core.Catalog.NONE) "" else "Your sound", store.soundPath(), builtIn?.gain ?: 1f,
                     app.focusfriend.core.Catalog.DEFAULT_SCENE, "Quantum Nebula", BeginReport(silencing = AndroidDistractionControl(this).hasAccess())))
                 begin(s, soundId, store.soundPath(), builtIn?.gain ?: 1f)
             }
@@ -184,25 +185,36 @@ class FocusService : Service() {
     private fun begin(s: FocusSession, soundId: String, soundPath: String?, gain: Float) {
         startForeground(NOTIFICATION_ID, notification("Focusing", "Ends at the time you chose. Tap to return."),
             ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
-        output?.stop(immediate = true)
-        output = if (soundPath != null) UserSoundPlayer(soundPath) else NoiseEngine(soundId, gain)
-        output?.start()
+        output?.stop(20)
+        // No sound chosen → a silent session. Otherwise it starts silent and fades in with the
+        // page transition (SessionAudio.target is driven by the activity), or over 250 ms.
+        output = when {
+            soundPath != null -> UserSoundPlayer(soundPath)
+            soundId == app.focusfriend.core.Catalog.NONE -> null
+            else -> NoiseEngine(soundId, gain)
+        }
+        output?.let { out ->
+            out.start()
+            SessionAudio.output = out
+            val t = SessionAudio.target
+            out.fadeTo(t, if (t >= 1f) 250 else 30)
+        }
         handler.removeCallbacks(timeUp)
         handler.postDelayed(timeUp, s.remainingMs(System.currentTimeMillis()).coerceAtLeast(0L))
     }
 
     private fun shutdown() {
         handler.removeCallbacks(timeUp)
-        output?.stop(immediate = false)
-        output = null
+        output?.stop(350)
+        output = null; SessionAudio.output = null
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
     override fun onDestroy() {
         handler.removeCallbacks(timeUp)
-        output?.stop(immediate = true)
-        output = null
+        output?.stop(20)
+        output = null; SessionAudio.output = null
         super.onDestroy()
     }
 

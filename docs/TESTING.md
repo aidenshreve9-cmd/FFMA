@@ -15,8 +15,8 @@ cd android
 | Suite | Result |
 |-------|--------|
 | `tests/search` (JS) — 29 tests | **29 passed** |
-| `tests/ui` (Playwright, Chromium) — 16 tests | **16 passed** |
-| `android/core` (Kotlin, JUnit 5) — 29 tests | **29 passed** |
+| `tests/ui` (Playwright, Chromium) — 19 tests | **19 passed** |
+| `android/core` (Kotlin, JUnit 5) — 34 tests | **34 passed** |
 | `android/app` type-check against Android 15 framework (`:verify`) | **Compiles, 0 errors** (91 classes) |
 | `android/app/src/test` Robolectric DND tests — 8 tests | **Compile; not run here** (need `androidx.test` from Google's repository, which is blocked in this sandbox) |
 | Android APK build / on-device tests | **Not run here** (Android SDK host blocked); do before release |
@@ -33,7 +33,9 @@ corrupted records, record shape.
 end time; rounding up; "1 min" to the last second; accurate after leaving and returning; finish runs
 once; catalog (8 sounds, 8 views, defaults); Random draws from built-ins + user files; 10 quotes
 with authors; settings defaults (Alarm ON, Trusted OFF, no duration field); contact book rules
-(duplicates across formats, invalid numbers, max 50); validation fallbacks; policy follows switches.
+(duplicates across formats, invalid numbers, max 50); validation fallbacks; policy follows switches;
+sound preview (exactly 5 s with fades; switching stops at the silent midpoint, never two at once;
+quick taps play only the last choice; re-tap fades out; leaving stops at once; re-tap deselects).
 
 **Relevance:** Precision@1, Precision@3, MRR, NDCG@3, zero-result rate on the spec corpus; local A/B
 of ranking A vs B (see `docs/SEARCH.md`).
@@ -49,7 +51,10 @@ via the fixed end time; Done resets to 15; Settings order and defaults; exact Al
 contact search (ranking, phone variants, did-you-mean, duplicates, normalized storage); search
 keyboard (↓ ↑ Enter Escape); removal updates the index; sound search appears past 12 and handles
 `pnik`; persistence (duration never saved); reduced motion; no network except fonts and no names
-or numbers in the console; search failure never prevents Focus.
+or numbers in the console; search failure never prevents Focus; Atmosphere naming and the Settings
+background changing as you choose; sound preview (5 s, fade in/out, never two sounds at once, quick
+taps skip to the last, re-tap deselects, leaving Settings stops it); the Focus sound's level tracks
+the page transition frame by frame, keeps playing, stops at the end; no sound → silent Focus.
 
 **Robolectric (Android DND layer, written):** no access → nothing silenced, nothing created; the
 rule uses the spec policy (calls/messages none, repeat callers, alarms, media, visual effects hidden);
@@ -66,6 +71,8 @@ unexpected end is correct and idempotent; session store rejects corrupted durati
 ## Before release — manual device checklist
 1. Grant Do Not Disturb access; start Focus; confirm notifications are silent and the status line shows.
 2. Call from another phone: first call silent; second call within 15 minutes rings.
+2a. Settings: tap sounds quickly — one sound at a time, no clicks; the preview ends after 5 s;
+   leaving Settings or the app stops it. Start Focus: the sound rises with the page fade.
 3. Trusted Contacts ON with a saved contact: their call rings; after Focus, their star state is as before.
 4. Set an alarm inside a session with Alarm Safety ON (rings) and OFF (silent).
 5. Turn on your own DND schedule before Focus; confirm it's unchanged after Focus ends.

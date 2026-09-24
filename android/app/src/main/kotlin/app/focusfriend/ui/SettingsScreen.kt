@@ -48,6 +48,10 @@ interface SettingsHost {
     fun addContact(name: String, number: String): String?
     fun removeContact(id: String)
     fun removeMedia(id: String)
+    /** A sound row was tapped: selects it and plays a 5-second preview, or deselects it if it was chosen. Returns the new choice. */
+    fun tapSound(id: String, fromSearch: Boolean): String
+    /** The atmosphere to show for [id] (Random resolved): scene id and, for the person's own picture, the picture. */
+    fun atmosphere(id: String): Pair<String, android.graphics.Bitmap?>
     fun trustedContactsSwitched(on: Boolean)
     fun contactsAccessGranted(): Boolean
     fun doNotDisturbAllowed(): Boolean
@@ -56,7 +60,7 @@ interface SettingsHost {
     fun close()
 }
 
-/** Settings, in the required order: Sound, Scenic view, Trusted Contacts, Alarm Safety, Permissions. */
+/** Settings, in the required order: Sound, Atmosphere, Trusted Contacts, Alarm Safety, Permissions. Its background is the chosen atmosphere. */
 @SuppressLint("ViewConstructor")
 class SettingsScreen(private val c: Context, private val host: SettingsHost) : FrameLayout(c) {
     private val body = LinearLayout(c).apply { orientation = LinearLayout.VERTICAL; setPadding(dpi(20f), dpi(4f), dpi(20f), dpi(30f)) }
@@ -66,7 +70,7 @@ class SettingsScreen(private val c: Context, private val host: SettingsHost) : F
     private val sceneGrid = GridLayout(c).apply { columnCount = 3 }
     private val contactList = LinearLayout(c).apply { orientation = LinearLayout.VERTICAL }
     private val soundSearch = SearchField(c, "Search sounds…", "Search sounds")
-    private val sceneSearch = SearchField(c, "Search scenic views…", "Search scenic views")
+    private val sceneSearch = SearchField(c, "Search atmospheres…", "Search atmospheres")
     private val contactSearch = SearchField(c, "Search contacts…", "Search trusted contacts")
     private val soundEmpty = emptyState(c)
     private val sceneEmpty = emptyState(c)
@@ -80,12 +84,20 @@ class SettingsScreen(private val c: Context, private val host: SettingsHost) : F
     private val nameField = input(c, "Name", "Contact name", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PERSON_NAME)
     private val numberField = input(c, "Phone number", "Phone number", InputType.TYPE_CLASS_PHONE)
 
-    private val sounds = SearchableSection("sounds", soundSearch, soundList, soundEmpty, "sound", "sounds", threshold = 13)
-    private val scenes = SearchableSection("scenes", sceneSearch, sceneGrid, sceneEmpty, "scenic view", "scenic views", threshold = 13)
+    private val sounds: SearchableSection = SearchableSection("sounds", soundSearch, soundList, soundEmpty, "sound", "sounds", threshold = 13,
+        onSearchPick = { id -> select(sounds, host.tapSound(id, fromSearch = true)) })
+    private val scenes = SearchableSection("scenes", sceneSearch, sceneGrid, sceneEmpty, "atmosphere", "atmospheres", threshold = 13)
+
+    // The chosen atmosphere behind everything, crossfading when it changes, dimmed for readability.
+    private val bgBack = SceneView(c).apply { dimmed = false }
+    private val bgFront = SceneView(c).apply { dimmed = false; alpha = 0f }
+    private var bgFor: String? = null
     private val contacts = SearchableSection("trustedContacts", contactSearch, contactList, contactEmpty, "contact", "contacts", threshold = 1)
 
     init {
         setBackgroundColor(Color.TRANSPARENT)
+        addView(bgBack, LayoutParams(-1, -1)); addView(bgFront, LayoutParams(-1, -1))
+        addView(View(c).apply { setBackgroundColor(0x9E03000C.toInt()); importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO }, LayoutParams(-1, -1))
         val head = LinearLayout(c).apply {
             gravity = Gravity.CENTER_VERTICAL; setPadding(dpi(20f), dpi(14f), dpi(20f), dpi(12f))
             addView(ImageButton(c).apply {
@@ -101,7 +113,7 @@ class SettingsScreen(private val c: Context, private val host: SettingsHost) : F
         body.addView(addButton(c, "＋ Add your own sound") { host.pickSound() }, lp(top = 12f))
         body.addView(note(c, "Use your phone's volume buttons to change how loud it is."), lp(top = 10f))
 
-        section("Scenic view")
+        section("Atmosphere")
         body.addView(sceneSearch, lp(bottom = 12f)); body.addView(sceneGrid); body.addView(sceneEmpty)
         body.addView(addButton(c, "＋ Add your own picture") { host.pickPicture() }, lp(top = 12f))
 
@@ -152,7 +164,24 @@ class SettingsScreen(private val c: Context, private val host: SettingsHost) : F
         alarmSwitch.onChange = { on -> host.update { it.copy(alarmSafety = on) }; renderAlarm() }
     }
 
-    fun render() { renderSounds(); renderScenes(); renderContacts(); renderTrust(); renderAlarm(); renderPermissions() }
+    fun render() {
+        if (bgFor != host.settings.scene) showAtmosphere(host.settings.scene, animate = isShown)
+        renderSounds(); renderScenes(); renderContacts(); renderTrust(); renderAlarm(); renderPermissions()
+    }
+
+    fun setAnimating(on: Boolean) { bgBack.setAnimating(on); bgFront.setAnimating(on && bgFront.alpha > 0f) }
+
+    /** Shows [id] behind Settings; with motion, the new atmosphere fades in over the old one. */
+    private fun showAtmosphere(id: String, animate: Boolean) {
+        bgFor = id
+        val (scene, picture) = host.atmosphere(id)
+        bgFront.animate().cancel()
+        if (!animate || !Motion.enabled) { bgBack.show(scene, picture); bgFront.alpha = 0f; bgFront.setAnimating(false); return }
+        bgFront.show(scene, picture); bgFront.setAnimating(true)
+        bgFront.animate().alpha(1f).setDuration(700).withEndAction {
+            bgBack.show(scene, picture); bgFront.alpha = 0f; bgFront.setAnimating(false)
+        }.start()
+    }
 
     private fun section(title: String) { body.addView(eyebrow(c, title), lp(top = 22f, bottom = 12f)) }
 
@@ -162,27 +191,32 @@ class SettingsScreen(private val c: Context, private val host: SettingsHost) : F
         (Catalog.SOUNDS.map { Triple(it.id, it.name, it.kind) } + Triple(Catalog.RANDOM, "Random", "EACH SESSION") +
             host.userSounds().map { Triple(it.id, it.name, "YOURS") }).forEach { (id, name, kind) ->
             rows[id] = choiceRow(c, id, name, kind, host.settings.sound == id,
-                onSelect = { select(sounds, id); host.update { it.copy(sound = id) } },
+                onSelect = { select(sounds, host.tapSound(id, fromSearch = false)) },
                 onRemove = if (id.startsWith(Catalog.USER_SOUND_PREFIX)) ({ host.removeMedia(id) }) else null)
         }
         sounds.setRows(rows)
     }
 
-    // ---------- Scenic view ----------
+    // ---------- Atmosphere ----------
     private fun renderScenes() {
         val rows = LinkedHashMap<String, View>()
         val tile = dpi(100f)
         Catalog.SCENES.forEach { s ->
             rows[s.id] = sceneTile(c, s.id, s.name, ScenePainter.thumbnail(s.id, tile, (tile * 1.25f).toInt(), resources.displayMetrics.density), host.settings.scene == s.id,
-                onSelect = { select(scenes, s.id); host.update { it.copy(scene = s.id) } }, onRemove = null)
+                onSelect = { pickScene(s.id) }, onRemove = null)
         }
         rows[Catalog.RANDOM] = sceneTile(c, Catalog.RANDOM, "Random", null, host.settings.scene == Catalog.RANDOM,
-            onSelect = { select(scenes, Catalog.RANDOM); host.update { it.copy(scene = Catalog.RANDOM) } }, onRemove = null)
+            onSelect = { pickScene(Catalog.RANDOM) }, onRemove = null)
         host.userPictures().forEach { p ->
             rows[p.id] = sceneTile(c, p.id, p.name, host.pictureThumb(p, tile), host.settings.scene == p.id,
-                onSelect = { select(scenes, p.id); host.update { it.copy(scene = p.id) } }, onRemove = { host.removeMedia(p.id) })
+                onSelect = { pickScene(p.id) }, onRemove = { host.removeMedia(p.id) })
         }
         scenes.setRows(rows)
+    }
+
+    private fun pickScene(id: String) {
+        select(scenes, id); host.update { it.copy(scene = id) }
+        showAtmosphere(id, animate = true)
     }
 
     // ---------- Trusted Contacts ----------
@@ -236,6 +270,8 @@ class SettingsScreen(private val c: Context, private val host: SettingsHost) : F
     private inner class SearchableSection(
         val collection: String, val field: SearchField, val container: ViewGroup, val empty: LinearLayout,
         val singular: String, val plural: String, val threshold: Int,
+        /** What the keyboard's search action does with the top result (default: tap it). */
+        val onSearchPick: ((String) -> Unit)? = null,
     ) {
         private val rows = LinkedHashMap<String, View>()
         private val handler = Handler(Looper.getMainLooper())
@@ -249,7 +285,12 @@ class SettingsScreen(private val c: Context, private val host: SettingsHost) : F
                 override fun afterTextChanged(s: Editable?) = apply()
             })
             field.edit.setOnEditorActionListener { _, id, _ ->
-                if (id == EditorInfo.IME_ACTION_SEARCH) { firstVisible()?.performClick(); true } else false
+                if (id == EditorInfo.IME_ACTION_SEARCH) {
+                    val top = firstVisible()
+                    val topId = rows.entries.firstOrNull { it.value === top }?.key
+                    if (onSearchPick != null && topId != null) onSearchPick.invoke(topId) else top?.performClick()
+                    true
+                } else false
             }
             field.edit.setOnKeyListener { _, code, e ->
                 if (code == KeyEvent.KEYCODE_ESCAPE && e.action == KeyEvent.ACTION_DOWN && field.edit.text.isNotEmpty()) {

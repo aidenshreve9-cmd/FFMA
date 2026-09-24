@@ -15,13 +15,22 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.ContactsContract
+import android.os.SystemClock
+import android.view.Choreographer
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.window.OnBackInvokedDispatcher
+import app.focusfriend.audio.NoiseEngine
+import app.focusfriend.audio.SessionAudio
+import app.focusfriend.audio.SoundOutput
+import app.focusfriend.audio.UserSoundPlayer
 import app.focusfriend.core.Catalog
+import app.focusfriend.core.PreviewVoice
+import app.focusfriend.core.SoundPreview
+import app.focusfriend.core.Timers
 import app.focusfriend.core.FocusSession
 import app.focusfriend.core.FocusSettings
 import app.focusfriend.core.InterruptionPolicy
@@ -94,6 +103,12 @@ class MainActivity : Activity(), SettingsHost, FocusRuntime.Listener {
     private val io = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
     private val ticker = object : Runnable { override fun run() { tick(); main.postDelayed(this, 1000) } }
+    private val preview by lazy {
+        SoundPreview(object : Timers {
+            override fun after(ms: Long, block: () -> Unit): Any = Runnable(block).also { main.postDelayed(it, ms) }
+            override fun cancel(token: Any) = main.removeCallbacks(token as Runnable)
+        }, ::openPreviewVoice)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -133,6 +148,7 @@ class MainActivity : Activity(), SettingsHost, FocusRuntime.Listener {
     }
 
     override fun onPause() {
+        preview.stopNow()   // leaving the app leaves Settings too
         FocusRuntime.removeListener(this)
         setAmbient(false)
         main.removeCallbacks(ticker)
@@ -142,7 +158,9 @@ class MainActivity : Activity(), SettingsHost, FocusRuntime.Listener {
     override fun onDestroy() { io.shutdown(); super.onDestroy() }
 
     private fun setAmbient(on: Boolean) {
-        nebula.setAnimating(on); home.focus.setAnimating(on && current === home)
+        nebula.setAnimating(on && current !== settingsScreen)   // Settings covers it with the atmosphere
+        settingsScreen.setAnimating(on && current === settingsScreen)
+        home.focus.setAnimating(on && current === home)
         sessionScreen.timer.setAnimating(on && current === sessionScreen); sessionScreen.scene.setAnimating(on && current === sessionScreen)
         done.orb.setAnimating(on && current === done)
     }
@@ -171,15 +189,17 @@ class MainActivity : Activity(), SettingsHost, FocusRuntime.Listener {
         val builtInSound = Catalog.SOUNDS.firstOrNull { it.id == soundId }
         val userSound = userSounds.firstOrNull { it.id == soundId }
         val sceneName = Catalog.SCENES.firstOrNull { it.id == sceneId }?.name ?: userPictures.firstOrNull { it.id == sceneId }?.name ?: "Quantum Nebula"
+        val silent = soundId == Catalog.NONE
         val active = ActiveSession(
             FocusSession(home.focus.minutes, System.currentTimeMillis()),
-            soundId = if (builtInSound == null && userSound == null) Catalog.DEFAULT_SOUND else soundId,
-            soundName = builtInSound?.name ?: userSound?.name ?: "White Noise",
+            soundId = if (silent) Catalog.NONE else if (builtInSound == null && userSound == null) Catalog.DEFAULT_SOUND else soundId,
+            soundName = if (silent) "" else builtInSound?.name ?: userSound?.name ?: "White Noise",
             soundPath = userSound?.file?.path,
             soundGain = builtInSound?.gain ?: if (userSound != null) 1f else Catalog.SOUNDS[0].gain,
             sceneId = sceneId, sceneName = sceneName, report = BeginReport(silencing = false),
         )
         requestNotificationPermissionOnce()
+        SessionAudio.target = if (Motion.enabled) 0f else 1f   // the sound rises with the page transition
         val started = FocusRuntime.start(this, active, InterruptionPolicy.from(settings))
         val r = started.report
         when {
@@ -200,7 +220,11 @@ class MainActivity : Activity(), SettingsHost, FocusRuntime.Listener {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)   // screen stays awake during Focus
         warnedAccessLost = false; lastMinute = -1
         if (current !== sessionScreen) {
-            if (animate) show(sessionScreen) else { current?.visibility = View.GONE; current = sessionScreen; sessionScreen.visibility = View.VISIBLE; setAmbient(true) }
+            if (animate && Motion.enabled) { show(sessionScreen); followPage(sessionScreen) }
+            else {
+                if (animate) show(sessionScreen) else { current?.visibility = View.GONE; current = sessionScreen; sessionScreen.visibility = View.VISIBLE; setAmbient(true) }
+                SessionAudio.follow(1f, 250)
+            }
             sessionScreen.live.announcePolitely("Focus started. ${active.session.minutes} minutes.")
         }
         main.removeCallbacks(ticker); main.post(ticker)
@@ -311,10 +335,54 @@ class MainActivity : Activity(), SettingsHost, FocusRuntime.Listener {
         if (requestCode == REQ_CONTACTS) settingsScreen.render()
     }
 
+    /**
+     * The Focus sound fades in in step with the page transition: every frame its level is set to
+     * the incoming page's opacity (same delay, duration and easing), so sound and picture move together.
+     */
+    private fun followPage(page: View) {
+        val started = SystemClock.uptimeMillis()
+        Choreographer.getInstance().postFrameCallback(object : Choreographer.FrameCallback {
+            override fun doFrame(frameTimeNanos: Long) {
+                val late = SystemClock.uptimeMillis() - started > 1500   // e.g. the app went to the background mid-transition
+                val k = if (current === page && !late) page.alpha.coerceIn(0f, 1f) else 1f
+                SessionAudio.follow(k, if (late) 250 else 30)
+                if (k < 1f) Choreographer.getInstance().postFrameCallback(this)
+            }
+        })
+    }
+
     // ---------------- Settings host ----------------
 
     private fun openSettings() { if (FocusRuntime.active != null) return; settingsScreen.render(); show(settingsScreen, sideways = 1) }
-    override fun close() { show(home, sideways = -1) }
+    override fun close() { preview.stopNow(); show(home, sideways = -1) }
+
+    override fun tapSound(id: String, fromSearch: Boolean): String {
+        val next = Catalog.soundAfterTap(settings.sound, id, fromSearch)
+        update { it.copy(sound = next) }
+        if (next == Catalog.NONE) preview.fadeOut() else preview.play(id)
+        return next
+    }
+
+    /** A Settings preview voice: Random is resolved to one sound; it starts silent and the preview fades it. */
+    private fun openPreviewVoice(id: String): PreviewVoice? {
+        val userSounds = media.sounds()
+        val pick = Catalog.pickSound(id, userSounds.map { it.id })
+        val out: SoundOutput = Catalog.SOUNDS.firstOrNull { it.id == pick }?.let { NoiseEngine(it.id, it.gain) }
+            ?: userSounds.firstOrNull { it.id == pick }?.let { UserSoundPlayer(it.file.path) } ?: return null
+        out.start()
+        return object : PreviewVoice {
+            override val id = pick
+            override fun fadeTo(level: Float, ms: Long) = out.fadeTo(level, ms)
+            override fun level() = out.level()
+            override fun stop(fadeMs: Long) = out.stop(fadeMs)
+        }
+    }
+
+    override fun atmosphere(id: String): Pair<String, Bitmap?> {
+        val pictures = media.pictures()
+        val pick = Catalog.pickScene(id, pictures.map { it.id })
+        return pick to pictures.firstOrNull { it.id == pick }?.let { media.decodePicture(it, MediaLibrary.MAX_PICTURE_PX) }
+    }
 
     override fun update(transform: (FocusSettings) -> FocusSettings) { settings = transform(settings); store.save(settings) }
     override fun userSounds() = media.sounds()
@@ -370,6 +438,7 @@ class MainActivity : Activity(), SettingsHost, FocusRuntime.Listener {
     }
 
     override fun removeMedia(id: String) {
+        if (preview.voice?.id == id) preview.stopNow()   // a preview can't outlive its file
         io.execute {
             val ok = media.remove(id)
             main.post {

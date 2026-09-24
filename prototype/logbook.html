@@ -103,7 +103,7 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:v
   <div class="stats" role="list">
     <div role="listitem"><b>3.0</b><span>spec implemented</span></div>
     <div role="listitem"><b>2</b><span>platforms: browser + Android</span></div>
-    <div role="listitem"><b>74</b><span>automated tests passing</span></div>
+    <div role="listitem"><b>82</b><span>automated tests passing</span></div>
     <div role="listitem"><b>13</b><span>spec conflicts resolved</span></div>
   </div>
 
@@ -278,6 +278,22 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:v
         </ul>
       </div>
     </li>
+
+    <li class="entry release">
+      <div class="meta"><time datetime="2026-09-24T12:00Z">24 Sep</time><span class="tag rel">Atmosphere &amp; audio</span></div>
+      <h3>Atmosphere and sound previews</h3>
+      <p class="ask">You sent the Atmosphere &amp; Audio patch.</p>
+      <div class="card">
+        <ul>
+          <li><b>Atmosphere:</b> "Scenic view" is now "Atmosphere". Settings' background shows the one you choose and crossfades as you pick another.</li>
+          <li><b>Previews:</b> tapping a sound plays it for 5 seconds, fading in and out. Switching fades the old sound out, changes over in silence, then fades the new one in, so two sounds never overlap. Quick taps skip straight to the last one.</li>
+          <li><b>Deselect:</b> tapping the chosen sound again fades it out and deselects it. Focus is then silent.</li>
+          <li><b>Leaving Settings</b> stops the preview at once (on Android, leaving the app does too).</li>
+          <li><b>Focus:</b> the sound loops for the whole session and fades in frame by frame with the page transition.</li>
+          <li><b>Checked:</b> 29 search, 19 browser UI and 34 Kotlin tests pass; the Android app compiles against Android 15. It hasn't been heard on a real phone yet.</li>
+        </ul>
+      </div>
+    </li>
   </ol>
 
   <h2>Decisions you made</h2>
@@ -302,7 +318,8 @@ footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:v
     <div class="row"><span class="state open">Open</span><div><b>Slide direction</b><p>Sliding left goes to the next time and sliding right goes back, like flipping through a list.</p></div></div>
     <div class="row"><span class="state open">Open</span><div><b>Default switch states</b><p>Alarm Safety starts ON so medication alarms aren't missed. Trusted Contacts starts OFF.</p></div></div>
     <div class="row"><span class="state open">Open</span><div><b>Black Noise</b><p>Strictly, "black noise" means silence. It's built as a very quiet sub-bass rumble instead.</p></div></div>
-    <div class="row"><span class="state open">Open</span><div><b>Default scenic view</b><p>Quantum Nebula.</p></div></div>
+    <div class="row"><span class="state open">Open</span><div><b>Default atmosphere</b><p>Quantum Nebula.</p></div></div>
+    <div class="row"><span class="state open">Open</span><div><b>Atmosphere background on Home too?</b><p>Now only Settings shows the chosen atmosphere behind it. Home keeps its dark nebula so the orb stands out.</p></div></div>
     <div class="row"><span class="state open">Open</span><div><b>Home helpers</b><p>The step dots were replaced by the dial arc. The "Slide the button to change the time" hint is still shown.</p></div></div>
     <div class="row"><span class="state open">Open</span><div><b>Done screen extras</b><p>The quote's author is shown, and ending early says "Session ended".</p></div></div>
     <div class="row"><span class="state open">Open</span><div><b>Buy Me a Coffee link</b><p>Not provided yet. The button opens a sheet saying so.</p></div></div>
