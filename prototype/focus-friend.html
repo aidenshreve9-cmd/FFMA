@@ -93,10 +93,11 @@ button{font:inherit;color:inherit}
   box-shadow:0 0 0 1px rgba(247,37,133,.55),0 0 24px 2px rgba(217,0,255,.35),inset 0 0 24px rgba(247,37,133,.25)}
 @keyframes breath{0%,100%{opacity:.22}50%{opacity:.75}}
 
-/* ---------- Start: quantum tunnel ---------- */
+/* ---------- Start: wormhole intro ---------- */
 #start{justify-content:center;align-items:center;text-align:center;padding-block:14px calc(28px + env(safe-area-inset-bottom,0px));background:#02060d}
-#tunnel{position:absolute;inset:0;width:100%;height:100%;display:block;background:radial-gradient(ellipse 60% 26% at 50% 32%,#1f8a55 0%,#0a3322 40%,#02060d 78%)}
-.start-center{position:relative;flex:1;width:100%;display:grid;place-items:center;margin-top:18vh}
+#tunnel{position:absolute;inset:0;width:100%;height:100%;display:block;background:radial-gradient(ellipse 70% 45% at 55% 30%,#0f4a48 0%,#06201f 45%,#01080a 80%)}
+.start-center{position:relative;flex:1;width:100%;display:grid;place-items:center;margin-top:18vh;isolation:isolate}
+.start-center::before{content:"";position:absolute;left:50%;top:50%;width:min(135%,560px);height:340px;transform:translate(-50%,-50%);z-index:-1;pointer-events:none;background:radial-gradient(closest-side,rgba(1,8,10,.66),rgba(1,8,10,.38) 55%,rgba(1,8,10,0))}
 .intro-line,.start-title-block{grid-area:1/1}
 .intro-line{font-family:var(--serif);font-style:italic;font-size:27px;line-height:1.25;color:#F1FFF6;margin:0;max-width:18ch;opacity:0;text-wrap:balance;text-shadow:0 0 16px rgba(0,0,0,.95),0 0 34px rgba(0,0,0,.8)}
 .start-title-block{display:flex;flex-direction:column;align-items:center;gap:14px}
@@ -1844,79 +1845,95 @@ function createOrb(canvas) {
 const orbs = {};
 const orb = key => orbs[key] || (orbs[key] = createOrb($(key + "Core")));
 
-/* ================= Welcome: quantum tunnel ================= */
-// Log-polar space around an elliptical throat: grid, nebula and stars all drift down into it.
-const TUNNEL_FRAG = `
-precision highp float;
+/* ================= Welcome: wormhole of glowing rings ================= */
+// A funnel of dotted rings narrows into a neck of bright rings and flares out again beyond it.
+// Rings stream through it continuously while the colour drifts mint → pink → violet → blue → cyan.
+// Each dot is drawn as a small glowing point sprite, so the cost follows the dots, not the screen.
+const WORM_RINGS = 62, WORM_DOTS = 170;
+const WORM_COMMON = `
+const float TAU=6.2831853;
+const vec2 THROAT=vec2(0.02,0.52);
+vec3 pal(float h){
+  h=fract(h)*5.0;
+  float f=smoothstep(0.0,1.0,fract(h));
+  vec3 mint=vec3(0.45,1.0,0.62), pink=vec3(1.0,0.45,0.86), violet=vec3(0.66,0.42,1.0), blue=vec3(0.36,0.58,1.0), cyan=vec3(0.36,0.96,0.9);
+  if(h<1.0) return mix(mint,pink,f);
+  if(h<2.0) return mix(pink,violet,f);
+  if(h<3.0) return mix(violet,blue,f);
+  if(h<4.0) return mix(blue,cyan,f);
+  return mix(cyan,mint,f);
+}`;
+const WORM_VIGNETTE = `
+float vignette(vec2 res){
+  vec2 p=(gl_FragCoord.xy-0.5*res)/min(res.x,res.y);
+  return 1.0-0.45*smoothstep(0.5,1.3,length(p*vec2(1.0,0.72)));
+}`;
+const WORM_BG_FRAG = `
+precision mediump float;
 uniform vec2 uRes;
 uniform float uTime;
-const float TAU=6.2831853;
-float h13(vec3 p){p=fract(p*0.1031);p+=dot(p,p.zyx+31.32);return fract((p.x+p.y)*p.z);}
-float h12(vec2 p){vec3 q=fract(vec3(p.xyx)*0.1031);q+=dot(q,q.yzx+33.33);return fract((q.x+q.y)*q.z);}
-float vn(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
-  return mix(mix(mix(h13(i),h13(i+vec3(1,0,0)),f.x),mix(h13(i+vec3(0,1,0)),h13(i+vec3(1,1,0)),f.x),f.y),
-             mix(mix(h13(i+vec3(0,0,1)),h13(i+vec3(1,0,1)),f.x),mix(h13(i+vec3(0,1,1)),h13(i+vec3(1,1,1)),f.x),f.y),f.z);}
-float fbm(vec3 p){float s=0.0,a=0.5;for(int i=0;i<4;i++){s+=a*vn(p);p=p*2.03+vec3(1.7,9.2,3.1);a*=0.5;}return s;}
-// antialiased line at every integer of x; w = one pixel in x's units; too-dense lines fade out
-float gline(float x,float w){float d=abs(fract(x+0.5)-0.5);return (1.0-smoothstep(0.35*w,1.35*w,d))*clamp(1.0-w*3.5,0.0,1.0);}
+${WORM_COMMON}
+${WORM_VIGNETTE}
 void main(){
-  float m=min(uRes.x,uRes.y);
-  vec2 p=(gl_FragCoord.xy-0.5*uRes)/m;
-  float px=1.0/m, t=uTime;
-  vec2 q=p-vec2(0.0,0.30);
-  q.y*=1.55;
-  float r=max(length(q),1e-4);
-  float lr=log(r);
-  float a=atan(q.y,q.x)+t*0.02;
-  float flow=lr+t*0.12;
-  const float RIM=0.2;
-  float inside=smoothstep(RIM+0.015,RIM-0.03,r);
+  vec2 p=(gl_FragCoord.xy-0.5*uRes)/min(uRes.x,uRes.y);
+  float t=uTime;
+  vec3 col=mix(vec3(0.004,0.03,0.035),vec3(0.02,0.17,0.17),exp(-length((p-THROAT-vec2(0.12,0.2))*vec2(0.8,0.6))*1.6));
+  col+=pal(t/30.0)*0.05*exp(-length(p-THROAT)*2.5);
+  vec2 hp=p-(THROAT+vec2(-0.12,-0.2)+0.1*vec2(sin(t*0.19),cos(t*0.15)));
+  float haze=exp(-dot(hp*vec2(1.0,0.7),hp*vec2(1.0,0.7))/0.07)*(0.5+0.5*sin(t*0.23));
+  vec3 rb=0.5+0.5*cos(TAU*(dot(p,vec2(1.2,0.7))*1.4-t*0.04+vec3(0.0,0.33,0.67)));
+  col+=rb*haze*0.08;
+  gl_FragColor=vec4(col*vignette(uRes),1.0);
+}`;
+const WORM_DOT_VERT = `
+attribute vec2 a;
+uniform vec2 uRes;
+uniform float uTime;
+varying vec3 vCol;
+varying float vSize,vCore,vHalo,vCoreW,vHaloW;
+${WORM_COMMON}
+const float S=26.0, TN=10.0, N=${WORM_RINGS}.0, M=${WORM_DOTS}.0, NECK=0.12, HALF=0.30, RMAX=1.9;
+void main(){
+  float t=uTime, m=min(uRes.x,uRes.y);
+  float u=a.x+fract(t*0.16);
+  float z,r,w;
+  if(u<S){ w=(S-u)/S; r=NECK+RMAX*pow(w,1.7); z=-HALF-1.2*sqrt(NECK*(r-NECK)); }
+  else if(u<S+TN){ w=0.0; float s=(u-S)/TN; z=-HALF+2.0*HALF*s; r=NECK*(1.0+0.08*sin(s*3.1416)); }
+  else { w=(u-S-TN)/S; r=NECK+RMAX*pow(w,1.7); z=HALF+1.2*sqrt(NECK*(r-NECK)); }
+  vec3 A=normalize(vec3(0.42+0.04*sin(t*0.11),0.80,-0.46));
+  vec2 E1=normalize(vec2(A.y,-A.x)), E2=normalize(A.xy);
+  float k=abs(A.z);
+  float g=1.6/(1.8-A.z*z);
+  vec2 C=THROAT+A.xy*z*g;
+  float R=r*g;
+  float ang=a.y/M*TAU+t*0.05;
+  vec2 P=C+E1*R*cos(ang)+E2*R*k*sin(ang);
+  gl_Position=vec4(P*2.0*m/uRes,0.0,1.0);
 
-  vec3 col=vec3(0.006,0.016,0.04);
-  col+=vec3(0.015,0.04,0.08)*smoothstep(1.3,0.0,length(p));
-
-  vec3 np=vec3(cos(a)*1.7,sin(a)*1.7,flow*1.7);
-  float n=fbm(np);
-  float cloud=smoothstep(0.42,0.82,n);
-  vec3 green=vec3(0.07,0.80,0.43), mint=vec3(0.78,1.0,0.84);
-  col=mix(col,green*0.75,cloud*0.8);
-  col+=mint*pow(max(cloud-0.45,0.0),2.0)*1.6;
-
-  col*=mix(1.0,0.72,smoothstep(0.42,RIM,r)*(1.0-inside));
-  if(inside>0.0){
-    float s=fbm(vec3(cos(a)*3.2,sin(a)*3.2,lr*0.9+t*0.45));
-    vec3 tube=green*(0.18+1.1*smoothstep(0.3,0.85,s))+mint*pow(max(s-0.55,0.0),2.0)*3.0;
-    tube+=mint*exp(-r*14.0)*0.7;
-    col=mix(col,tube,inside);
-  }
-  col+=vec3(0.72,1.0,0.32)*exp(-pow((r-RIM)/0.006,2.0))*0.35;
-
-  float Na=72.0, Nr=Na/TAU;
-  float w=px*1.55/r;
-  float g=max(gline(a/TAU*Na,w*Na/TAU),gline(flow*Nr,w*Nr));
-  col+=vec3(0.72,1.0,0.32)*g*mix(0.5,0.3,inside)*smoothstep(0.02,0.06,r);
-
-  float Ns=110.0;
-  vec2 sc=vec2(a/TAU*Ns,(lr+t*0.35)*Ns/TAU*0.5);
-  vec2 cid=floor(sc), f=fract(sc);
-  cid.x=mod(cid.x,Ns);
-  if(h12(cid)>0.74){
-    float sx=0.2+0.6*h12(cid+17.0), sy=0.1+0.4*h12(cid+41.0), len=0.15+0.3*h12(cid+7.0);
-    float wx=w*Ns/TAU;
-    float along=smoothstep(sy-0.03,sy,f.y)*(1.0-smoothstep(sy,sy+len,f.y));
-    float star=(1.0-smoothstep(0.6*wx,1.6*wx,abs(f.x-sx)))*along*(0.45+0.55*h12(cid+3.0));
-    col+=vec3(0.86,0.95,1.0)*star*1.4*clamp(1.0-wx*3.0,0.0,1.0)*smoothstep(0.04,0.14,r);
-  }
-
-  vec2 corner=0.5*uRes/m*vec2(1.0,-1.0);
-  float om=smoothstep(0.55,0.0,length(p-corner*0.95));
-  if(om>0.0){
-    float o=fbm(np*1.3+vec3(7.0,3.0,1.0));
-    col+=vec3(1.0,0.5,0.17)*om*(0.25+0.9*smoothstep(0.35,0.8,o));
-  }
-
-  col*=1.0-0.4*smoothstep(0.45,1.25,length(p*vec2(1.0,0.75)));
-  gl_FragColor=vec4(clamp(col,0.0,1.0),1.0);
+  float neck=1.0-smoothstep(0.0,0.12,w);
+  float fade=smoothstep(0.0,2.0,u)*smoothstep(N,N-3.0,u);
+  float b=fade*mix(1.0,0.3,pow(w,0.6))*(z>0.0?mix(1.0,0.65,w):1.0)*(0.6+0.4*cos(ang-2.2));
+  vCol=pal(t/30.0+u*0.012)*b;
+  // where dots crowd together (the neck), scale them down so they merge into an even glowing line
+  float dr=0.0032*g*m, halo=mix(3.0*dr,0.011*m,neck);
+  float sp=TAU*R*sqrt(0.5+0.5*k*k)*m/M;
+  vCore=dr; vHalo=halo;
+  vCoreW=min(1.0,sp/(2.0*dr))*mix(1.0,1.1,neck);
+  vHaloW=0.35*min(1.0,sp/(1.77*halo));
+  vSize=2.0*max(dr+1.5,2.0*halo);
+  gl_PointSize=vSize;
+}`;
+const WORM_DOT_FRAG = `
+precision mediump float;
+uniform highp vec2 uRes;
+varying vec3 vCol;
+varying float vSize,vCore,vHalo,vCoreW,vHaloW;
+${WORM_VIGNETTE}
+void main(){
+  float d=length(gl_PointCoord-0.5)*vSize;
+  float core=smoothstep(vCore+1.0,vCore-0.5,d);
+  float halo=exp(-d*d/(vHalo*vHalo));
+  gl_FragColor=vec4(vCol*(core*vCoreW+halo*vHaloW)*vignette(uRes),1.0);
 }`;
 function createTunnel(canvas) {
   let gl = null;
@@ -1924,16 +1941,23 @@ function createTunnel(canvas) {
   const none = { draw() {}, release() {} };
   if (!gl) return none; // the canvas's CSS gradient stands in
   const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null; };
-  const vs = sh(gl.VERTEX_SHADER, ORB_VERT), fs = sh(gl.FRAGMENT_SHADER, TUNNEL_FRAG);
-  const prog = vs && fs && gl.createProgram();
-  if (!prog) return none;
-  gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
-  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return none;
-  gl.useProgram(prog);
-  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
-  const loc = gl.getAttribLocation(prog, "p"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-  const uRes = gl.getUniformLocation(prog, "uRes"), uTime = gl.getUniformLocation(prog, "uTime");
+  const link = (vsrc, fsrc) => {
+    const vs = sh(gl.VERTEX_SHADER, vsrc), fs = sh(gl.FRAGMENT_SHADER, fsrc);
+    if (!vs || !fs) return null;
+    const pr = gl.createProgram(); gl.attachShader(pr, vs); gl.attachShader(pr, fs); gl.linkProgram(pr);
+    return gl.getProgramParameter(pr, gl.LINK_STATUS) ? pr : null;
+  };
+  const bg = link(ORB_VERT, WORM_BG_FRAG), dots = link(WORM_DOT_VERT, WORM_DOT_FRAG);
+  if (!bg || !dots) return none;
+  const buffer = data => { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW); return b; };
+  const quad = buffer(new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]));
+  const ids = new Float32Array(WORM_RINGS * WORM_DOTS * 2);
+  for (let i = 0, n = 0; i < WORM_RINGS; i++) for (let j = 0; j < WORM_DOTS; j++) { ids[n++] = i; ids[n++] = j; }
+  const dotBuf = buffer(ids);
+  const bgP = gl.getAttribLocation(bg, "p"), dotA = gl.getAttribLocation(dots, "a");
+  const bgRes = gl.getUniformLocation(bg, "uRes"), bgTime = gl.getUniformLocation(bg, "uTime");
+  const dotRes = gl.getUniformLocation(dots, "uRes"), dotTime = gl.getUniformLocation(dots, "uTime");
+  gl.blendFunc(gl.ONE, gl.ONE);
   let live = true;
   return {
     draw(t) {
@@ -1942,8 +1966,16 @@ function createTunnel(canvas) {
       const W = Math.max(2, Math.round(canvas.clientWidth * dpr)), H = Math.max(2, Math.round(canvas.clientHeight * dpr));
       if (canvas.width !== W || canvas.height !== H) { canvas.width = W; canvas.height = H; }
       gl.viewport(0, 0, W, H);
-      gl.uniform2f(uRes, W, H); gl.uniform1f(uTime, t);
+      gl.disable(gl.BLEND);
+      gl.useProgram(bg);
+      gl.bindBuffer(gl.ARRAY_BUFFER, quad); gl.enableVertexAttribArray(bgP); gl.vertexAttribPointer(bgP, 2, gl.FLOAT, false, 0, 0);
+      gl.uniform2f(bgRes, W, H); gl.uniform1f(bgTime, t);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      gl.enable(gl.BLEND);
+      gl.useProgram(dots);
+      gl.bindBuffer(gl.ARRAY_BUFFER, dotBuf); gl.enableVertexAttribArray(dotA); gl.vertexAttribPointer(dotA, 2, gl.FLOAT, false, 0, 0);
+      gl.uniform2f(dotRes, W, H); gl.uniform1f(dotTime, t);
+      gl.drawArrays(gl.POINTS, 0, WORM_RINGS * WORM_DOTS);
     },
     release() {
       if (!live) return;
