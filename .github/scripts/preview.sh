@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 # Runs the debug APK on the emulator and walks through the app like a person would:
 # Welcome → Home → Settings → Focus session → End early → Done, plus the Do Not Disturb
-# permission sheets. Saves a screenshot at each step and a screen recording, and fails if the
-# app crashes.
+# permission sheets. Saves a screenshot at each step and fails if the app crashes.
 #
 # Pass 1 runs with animations off (Android's "Remove animations"), which keeps the screen still
 # so uiautomator can read where each control is. Pass 2 turns animations back on and repeats
-# the walk with those positions while recording, so the pictures show the app as it really moves.
+# the core loop with those positions, so the pictures show the app as it really looks.
 set -u
 PKG=com.focusfriend.app
 OUT=preview
@@ -54,47 +53,19 @@ dump barrier; GO_BACK=$(where barrier "Go back")
 tap go-back "$GO_BACK"; sleep 2
 alive && log "pass 1: app still running" || log "pass 1: APP NOT RUNNING"
 
-# ---------- Pass 2: the real thing, animated and recorded ----------
+# ---------- Pass 2: the core loop, animated, one screenshot per screen ----------
+# No screen recording or sound preview: together they froze the emulator last time.
 anim 1
 adb shell am force-stop $PKG
 adb shell cmd notification allow_dnd $PKG
 sleep 2
-adb shell screenrecord --size 540x1200 --bit-rate 1500000 --time-limit 170 /sdcard/run.mp4 &
-REC=$!
-sleep 1
 adb shell am start -n $PKG/.MainActivity
-sleep 3;  shot 01-welcome-intro
-sleep 3;  shot 02-welcome-intro-2
-sleep 4;  shot 03-welcome
-tap start "$START"; sleep 4; shot 04-home
-tap settings "$SETTINGS"; sleep 4; shot 05-settings
-tap pink-noise "$PINK"; sleep 2
-adb shell input swipe 540 1900 540 900 600; sleep 3; shot 06-settings-atmosphere
-adb shell input swipe 540 1900 540 700 600; sleep 3; shot 07-settings-contacts
-adb shell input swipe 540 1900 540 700 600; sleep 3; shot 08-settings-safety
-adb shell input keyevent 4; sleep 4
-tap dial "$DIAL"; sleep 5; shot 09-session
-sleep 3; shot 10-session-2
-tap timer "$TIMER"; sleep 3; shot 11-end-early
-tap end "$END"; sleep 5; shot 12-done
-tap done "$DONE"; sleep 3
-# A second session with another scene.
-tap settings "$SETTINGS"; sleep 3
-adb shell input swipe 540 1900 540 900 600; sleep 2
-dump settings-scrolled; GALAXY2=$(where settings-scrolled "Spiral Galaxy")
-tap galaxy "$GALAXY2"; sleep 2
-adb shell input keyevent 4; sleep 3
-tap dial "$DIAL"; sleep 5; shot 13-session-galaxy
-tap timer "$TIMER"; sleep 2; tap end "$END"; sleep 3; tap done "$DONE"; sleep 2
-adb shell cmd notification disallow_dnd $PKG
-tap dial "$DIAL"; sleep 3; shot 14-permission
-tap not-now "$NOT_NOW"; sleep 3; shot 15-barrier
-tap go-back "$GO_BACK"; sleep 3
-
-adb shell pkill -INT screenrecord
-wait $REC
-sleep 2
-adb pull /sdcard/run.mp4 "$OUT/run.mp4"
+sleep 10; shot 01-welcome
+tap start "$START"; sleep 6; shot 02-home
+tap dial "$DIAL"; sleep 8; shot 03-session
+tap timer "$TIMER"; sleep 4; shot 04-end-early
+tap end "$END"; sleep 6; shot 05-done
+tap done "$DONE"; sleep 4; shot 06-home-again
 alive && log "pass 2: app still running" || log "pass 2: APP NOT RUNNING"
 
 adb logcat -d -b crash > "$OUT/crash.txt"

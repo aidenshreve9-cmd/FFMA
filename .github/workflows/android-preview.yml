@@ -1,7 +1,7 @@
 name: Android preview
 
 # Runs the app on an Android emulator, walks through every screen, and commits the screenshots
-# and a screen recording to android/preview/ on the same branch.
+# to android/preview/ on the same branch.
 on:
   push:
     paths:
@@ -16,7 +16,7 @@ permissions:
 jobs:
   preview:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -56,7 +56,6 @@ jobs:
           rm -rf android/preview
           mkdir -p android/preview
           cp preview/*.png preview/steps.txt preview/crash.txt preview/logcat.txt android/preview/ 2>/dev/null || true
-          cp preview/run.mp4 android/preview/ 2>/dev/null || true
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add android/preview
