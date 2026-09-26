@@ -72,7 +72,7 @@ class SoundEngine(private val onError: (String) -> Unit) {
             }
         }
 
-        fun setLevel(v: Float) {
+        fun applyLevel(v: Float) {
             level = v.coerceIn(0f, 1f)
             track?.setVolume(level)
             player?.setVolume(level, level)
@@ -87,7 +87,7 @@ class SoundEngine(private val onError: (String) -> Unit) {
                 val ms = max(1f, secs * 1000f)
                 while (true) {
                     val k = ((SystemClock.uptimeMillis() - start) / ms).coerceAtMost(1f)
-                    setLevel(from + (to - from) * easeInOut(k))
+                    applyLevel(from + (to - from) * easeInOut(k))
                     if (k >= 1f) break
                     delay(16)
                 }

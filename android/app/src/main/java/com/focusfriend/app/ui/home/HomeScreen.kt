@@ -93,12 +93,12 @@ fun HomeScreen(vm: FocusViewModel, time: State<Float>) {
                     .clearAndSetSemantics {
                         contentDescription = "Focus, $m $word. Drag around the ring, or swipe up or down, to change the time. Double-tap to start."
                         progressBarRangeInfo = ProgressBarRangeInfo(m.toFloat(), Catalog.MIN_MINUTES.toFloat()..Catalog.MAX_MINUTES.toFloat(), Catalog.MAX_MINUTES - Catalog.MIN_MINUTES - 1)
-                        setProgress { v -> vm.setMinutes(v.roundToInt()); vm.hideHint(); true }
+                        setProgress { v -> vm.chooseMinutes(v.roundToInt()); vm.hideHint(); true }
                         onClick(label = "Start focus") { vm.requestStart(); true }
                     }
                     .dialInput(
                         minutes = { minutes },
-                        onSet = { vm.setMinutes(it); vm.hideHint() },
+                        onSet = { vm.chooseMinutes(it); vm.hideHint() },
                         onTap = vm::requestStart,
                         onPress = { pressed = it },
                         onDrag = { dragging = it },

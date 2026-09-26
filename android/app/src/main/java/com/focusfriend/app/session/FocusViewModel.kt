@@ -138,7 +138,7 @@ class FocusViewModel(app: Application) : AndroidViewModel(app) {
         screen = Screen.HOME
     }
 
-    fun setMinutes(m: Int) {
+    fun chooseMinutes(m: Int) {
         minutes = m.coerceIn(Catalog.MIN_MINUTES, Catalog.MAX_MINUTES)
     }
 
