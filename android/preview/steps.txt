@@ -1,0 +1,22 @@
+tap start at 540 2125
+tap settings at 967 229
+tap dial at 540 1172
+tap timer at 540 1269
+tap end at 540 1387
+tap done at 540 1787
+tap dial at 540 1172
+tap not-now at 540 2206
+tap go-back at 540 2206
+pass 1: app still running
+screenshot 01-welcome
+tap start at 540 2125
+screenshot 02-home
+tap dial at 540 1172
+screenshot 03-session
+tap timer at 540 1269
+screenshot 04-end-early
+tap end at 540 1387
+screenshot 05-done
+tap done at 540 1787
+screenshot 06-home-again
+pass 2: app still running
