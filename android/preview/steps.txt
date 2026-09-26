@@ -1,0 +1,42 @@
+tap start at 540 2125
+tap settings at 967 229
+tap dial at 540 1172
+tap timer at 540 1269
+tap end at 540 1387
+tap done at 540 1787
+tap dial at 540 1172
+tap not-now at 540 2206
+tap go-back at 540 2206
+pass 1: app still running
+screenshot 01-welcome-intro
+screenshot 02-welcome-intro-2
+screenshot 03-welcome
+tap start at 540 2125
+screenshot 04-home
+tap settings at 967 229
+screenshot 05-settings
+tap pink-noise at 495 637
+screenshot 06-settings-atmosphere
+screenshot 07-settings-contacts
+screenshot 08-settings-safety
+tap dial at 540 1172
+screenshot 09-session
+screenshot 10-session-2
+tap timer at 540 1269
+screenshot 11-end-early
+tap end at 540 1387
+screenshot 12-done
+tap done at 540 1787
+tap settings at 967 229
+MISSING galaxy
+tap dial at 540 1172
+screenshot 13-session-galaxy
+tap timer at 540 1269
+tap end at 540 1387
+tap done at 540 1787
+tap dial at 540 1172
+screenshot 14-permission
+tap not-now at 540 2206
+screenshot 15-barrier
+tap go-back at 540 2206
+pass 2: APP NOT RUNNING
