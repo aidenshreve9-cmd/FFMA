@@ -49,8 +49,8 @@ fun DrawScope.streak(x: Float, y: Float, r: Float, color: Color, a: Float, rotat
     }
 }
 
-fun DrawScope.verticalGradient(w: Float, h: Float, vararg colors: Color) {
-    drawRect(Brush.verticalGradient(colors.toList(), startY = 0f, endY = h), size = Size(w, h))
+fun DrawScope.verticalGradient(w: Float, h: Float, top: Color, middle: Color, bottom: Color) {
+    drawRect(Brush.verticalGradient(listOf(top, middle, bottom), startY = 0f, endY = h), size = Size(w, h))
 }
 
 /**
@@ -58,9 +58,10 @@ fun DrawScope.verticalGradient(w: Float, h: Float, vararg colors: Color) {
  * those units, so the scene code can use the same numbers.
  */
 inline fun DrawScope.cssPixels(block: DrawScope.(w: Float, h: Float) -> Unit) {
-    val w = size.width / density
-    val h = size.height / density
-    withTransform({ scale(density, density, pivot = Offset.Zero) }) { block(w, h) }
+    val d = density
+    val w = size.width / d
+    val h = size.height / d
+    withTransform({ scale(d, d, pivot = Offset.Zero) }) { block(w, h) }
 }
 
 private class Star(val x: Float, val y: Float, val s: Float, val b: Float, val ph: Float, val f: Float)
