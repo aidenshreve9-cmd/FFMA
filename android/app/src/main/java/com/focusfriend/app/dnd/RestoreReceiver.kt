@@ -1,4 +1,4 @@
-package com.focusfriend.app
+package com.focusfriend.app.dnd
 
 import android.content.BroadcastReceiver
 import android.content.Context

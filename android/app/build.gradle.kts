@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
@@ -11,8 +12,8 @@ android {
         applicationId = "com.focusfriend.app"
         minSdk = 28
         targetSdk = 35
-        versionCode = 1
-        versionName = "3.0"
+        versionCode = 2
+        versionName = "4.0"
     }
 
     buildTypes {
@@ -22,11 +23,8 @@ android {
         }
     }
 
-    // The app shows the same page as the web prototype, so there's one copy of the UI to maintain.
-    sourceSets {
-        getByName("main") {
-            assets.srcDir("../../prototype")
-        }
+    buildFeatures {
+        compose = true
     }
 
     compileOptions {
@@ -36,10 +34,27 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+
+    lint {
+        textReport = true
+        textOutput = file("stdout")
+    }
 }
 
 dependencies {
-    implementation("androidx.activity:activity-ktx:1.9.3")
+    val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
+    implementation(composeBom)
     implementation("androidx.core:core-ktx:1.13.1")
-    implementation("androidx.webkit:webkit:1.12.1")
+    implementation("androidx.activity:activity-compose:1.9.3")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.animation:animation")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-core")
+
+    testImplementation("junit:junit:4.13.2")
+    // Android's own org.json is only a stub in local unit tests.
+    testImplementation("org.json:json:20240303")
 }

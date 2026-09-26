@@ -1,4 +1,4 @@
-package com.focusfriend.app
+package com.focusfriend.app.dnd
 
 import android.app.AlarmManager
 import android.app.NotificationManager

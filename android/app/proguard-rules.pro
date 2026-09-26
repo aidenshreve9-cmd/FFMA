@@ -1,4 +1,1 @@
-# The page calls these methods by name through the JavaScript bridge.
--keepclassmembers class com.focusfriend.app.FocusBridge {
-    @android.webkit.JavascriptInterface <methods>;
-}
+# No custom rules: the app has no reflection or JavaScript bridge.
