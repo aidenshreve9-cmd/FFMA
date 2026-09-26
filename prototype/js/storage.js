@@ -2,7 +2,7 @@
 
 /* ================= Storage (local only) ================= */
 const SKEY = "ff.settings.v1";
-const defaults = () => ({ v: 1, audio: "white", scene: DEFAULT_SCENE, alarmSafety: true, trustedOn: false, contacts: [], previewAck: false });
+const defaults = () => ({ v: 1, audio: "white", scene: DEFAULT_SCENE, alarmSafety: true, trustedOn: false, contacts: [], previewAck: false, goal: 60 });
 function loadSettings() {
   let s = defaults();
   try {
@@ -17,6 +17,7 @@ function loadSettings() {
         .slice(0, 50)
         .map(c => ({ id: typeof c.id === "string" && c.id ? c.id : newId(), name: c.name.slice(0, 40), number: c.number, normalized: digitsOf(c.number) }));
       s.previewAck = raw.previewAck === true;
+      if (GOALS.includes(raw.goal)) s.goal = raw.goal;
     }
   } catch (e) { /* corrupt or blocked storage: fall back to defaults */ }
   return s;

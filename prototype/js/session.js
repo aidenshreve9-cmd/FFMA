@@ -91,7 +91,8 @@ $("barBack").onclick = () => { state = "IDLE"; closeModals(); $("focusBtn").focu
 function startSession() {
   closeModals();
   const startedAt = Date.now();
-  session = { minutes, startedAt, endAt: startedAt + minutes * 60000, finished: false };
+  session = { minutes, startedAt, endAt: startedAt + minutes * 60000, finished: false,
+    planned: minutes, pausedAt: 0, pausedTotal: 0, intention: currentIntention() };
   state = "ACTIVE_SESSION";
 
   const silenced = distraction.beginDistractionReduction(interruptionPolicy());
@@ -109,13 +110,15 @@ function startSession() {
   startSessionSound(soundChoice, pageIn); // fades in with the page transition
   acquireWakeLock();
   lastAnnounced = null;
+  onSessionStart();
   tick();
   clearInterval(tickTimer);
   tickTimer = setInterval(tick, 1000);
   $("timerBtn").focus({ preventScroll: true });
 }
 
-function remainingMs() { return session ? Math.max(0, session.endAt - Date.now()) : 0; }
+// While paused the clock stands still at the moment of pausing.
+function remainingMs() { return session ? Math.max(0, session.endAt - (session.pausedAt || Date.now())) : 0; }
 const minsLeft = ms => Math.max(1, Math.ceil(ms / 60000)); // rounds up; shows 1 until it ends
 let lastAnnounced = null;
 function tick() {
@@ -128,6 +131,7 @@ function tick() {
   $("timerBtn").setAttribute("aria-label", `${m} ${m === 1 ? "minute" : "minutes"} left. Tap to end early.`);
   if (m !== lastAnnounced) { $("timerLive").textContent = `${m} ${m === 1 ? "minute" : "minutes"} left`; lastAnnounced = m; }
   if (state === "CONFIRM_END") $("endLeft").textContent = `About ${m} min left.`;
+  onSessionTick(ms);
 }
 
 $("timerBtn").onclick = () => {
@@ -150,6 +154,7 @@ function finish(natural) {
   setActive("session", false);
   closeModals();
   state = "COMPLETED";
+  onSessionFinish(natural);
   if (natural) playChime();
   showDone(natural);
 }
@@ -164,6 +169,7 @@ function showDone(natural) {
   $("doneBtn").focus({ preventScroll: true });
 }
 $("doneBtn").onclick = () => {
+  stopBreak(false);
   session = null; state = "IDLE";
   resetDuration();
   setScreen("home"); $("focusBtn").focus({ preventScroll: true });

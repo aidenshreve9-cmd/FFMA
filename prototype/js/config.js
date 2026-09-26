@@ -18,6 +18,10 @@ const SCENES = [
   { id: "void",    name: "Ethereal Void" },
 ];
 const DEFAULT_SCENE = "quantum";
+const QUICK_PICKS = [5, 15, 25, 45, 60];       // one-tap times on Home
+const GOALS = [0, 30, 60, 90, 120, 180];       // daily goal in minutes; 0 = off
+const EXTEND_MIN = 5;                          // "+5 min" during Focus
+const BREAK_MIN = 5;                           // break timer after a session
 const SOUNDS = [
   { id: "white",  name: "White Noise",  kind: "FLAT",       gain: .50 },
   { id: "pink",   name: "Pink Noise",   kind: "SOFT 1/F",   gain: .62 },

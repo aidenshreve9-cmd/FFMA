@@ -45,6 +45,12 @@
         </span>
       </button>
       <p class="hint" id="hint">Drag around the ring to set the time</p>
+      <div class="quick" id="quickPicks" role="group" aria-label="Quick times"></div>
+      <input class="intent" id="intention" type="text" maxlength="60" placeholder="What are you focusing on?" aria-label="What are you focusing on? Optional." autocomplete="off" spellcheck="false">
+      <div class="today" id="todayStats">
+        <div class="today-row"><span id="todayText">Today 0 min</span><span id="streakText"></span></div>
+        <div class="today-bar" id="todayBarWrap" aria-hidden="true"><span id="todayBar"></span></div>
+      </div>
       <p class="sr" id="durLive" aria-live="polite"></p>
     </div>
   </section>
@@ -66,6 +72,12 @@
           </span>
         </button>
       </div>
+      <p class="intent-show" id="intentShow" hidden></p>
+      <div class="sess-ctrl">
+        <button class="mini" id="pauseBtn" aria-pressed="false">Pause</button>
+        <button class="mini" id="extendBtn">+5 min</button>
+      </div>
+      <p class="ends-at" id="endsAt"></p>
       <p class="session-foot" id="sessionFoot"></p>
       <p class="sr" id="timerLive" aria-live="polite"></p>
     </div>
@@ -75,13 +87,20 @@
   <section id="done" class="screen" aria-label="Session done" hidden>
     <canvas class="done-core" id="doneCore" aria-hidden="true"></canvas>
     <p class="done-title" id="doneTitle">Done</p>
-    <div class="quote-card glass prism">
+    <p class="done-intent" id="doneIntent" hidden></p>
+    <div class="quote-card glass prism" id="quoteCard">
       <blockquote>
         <p id="quoteText"></p>
         <cite id="quoteCite"></cite>
       </blockquote>
     </div>
+    <div class="break-card glass prism" id="breakCard" hidden>
+      <p class="break-label">Break</p>
+      <p class="break-time" id="breakTime" role="timer">5:00</p>
+      <button class="link-btn" id="skipBreak">Skip break</button>
+    </div>
     <button class="btn primary" id="doneBtn">Done</button>
+    <button class="btn quiet" id="breakBtn">Take a break</button>
   </section>
 
   <!-- SETTINGS -->
@@ -112,6 +131,19 @@
         <div class="search-empty" id="sceneEmpty" hidden></div>
         <button class="add" id="addPic">＋ Add your own picture</button>
         <input type="file" id="picFile" accept="image/*" hidden>
+      </div>
+
+      <div class="set-sec">
+        <h2>Daily Goal</h2>
+        <div class="goal-row" id="goalRow" role="radiogroup" aria-label="Daily goal"></div>
+        <p class="note" id="goalNote"></p>
+      </div>
+
+      <div class="set-sec">
+        <h2>History</h2>
+        <div class="card glass prism"><div id="historyList" role="list" aria-label="Past sessions"></div></div>
+        <button class="add" id="clearHistory" hidden>Clear history</button>
+        <p class="note">Stored only on this device.</p>
       </div>
 
       <div class="set-sec">
@@ -239,4 +271,5 @@
 <script src="js/scenes.js"></script>
 <script src="js/loop.js"></script>
 <script src="js/settings.js"></script>
+<script src="js/extras.js"></script>
 <script src="js/main.js"></script>

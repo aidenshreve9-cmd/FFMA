@@ -70,6 +70,7 @@ function renderDuration(announce) {
   $("homeMins").textContent = m;
   $("focusBtn").setAttribute("aria-label", `Focus, ${m} ${word}. Drag around the ring, or use the arrow keys, to change the time. Press to start.`);
   homeDial.set(m / 60, m);
+  if (typeof syncQuickPicks === "function") syncQuickPicks();
   clearTimeout(durAnnounceT);
   // Announced once the time settles, not on every minute a drag passes through.
   if (announce) durAnnounceT = setTimeout(() => { $("durLive").textContent = `${m} ${word}`; }, 450);
