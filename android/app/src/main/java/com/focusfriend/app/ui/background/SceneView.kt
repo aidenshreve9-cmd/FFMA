@@ -5,7 +5,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -37,8 +39,14 @@ fun SceneView(choice: SceneChoice, time: State<Float>, modifier: Modifier = Modi
 
 /** Loads a picture off the main thread; null until it's ready (or if it can't be read). */
 @Composable
-fun rememberImage(file: File, maxSide: Int = 1600): State<ImageBitmap?> = produceState<ImageBitmap?>(null, file) {
-    value = withContext(Dispatchers.IO) {
+fun rememberImage(file: File, maxSide: Int = 1600): State<ImageBitmap?> {
+    val image = remember(file) { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(file) { image.value = load(file, maxSide) }
+    return image
+}
+
+private suspend fun load(file: File, maxSide: Int): ImageBitmap? =
+    withContext(Dispatchers.IO) {
         try {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeFile(file.path, bounds)
@@ -49,7 +57,6 @@ fun rememberImage(file: File, maxSide: Int = 1600): State<ImageBitmap?> = produc
             null
         }
     }
-}
 
 /** Scales the picture to cover the whole area, cropping the edges that don't fit. */
 fun DrawScope.drawCover(img: ImageBitmap) {
